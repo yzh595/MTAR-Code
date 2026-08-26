@@ -25,7 +25,7 @@ At 300 epochs, MTAR-B and MTAR-L provide 1.27x and 1.39x training speedups, resp
 
 ## Setup
 
-Use a [LlamaGen](https://github.com/FoundationVision/LlamaGen)-compatible PyTorch environment. DINOv3 preprocessing additionally requires a recent version of `transformers`. Download the ImageNet dataset and the LlamaGen VQ-16 tokenizer checkpoint before training.
+Use a [LlamaGen](https://github.com/FoundationVision/LlamaGen)-compatible PyTorch environment. 
 
 ## Data preparation
 
