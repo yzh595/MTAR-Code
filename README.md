@@ -1,6 +1,6 @@
 # Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation
 
-Official PyTorch implementation of **MTAR**, accepted by ACM Multimedia 2026.
+Official PyTorch implementation of **MTAR**.
 
 ![Overview of the MTP and token-level contrastive regularization components in MTAR](assets/mtar_overview.png)
 
