@@ -1,4 +1,4 @@
-# Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation[arXiv](https://arxiv.org/abs/2608.25386) 
+# Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation [arXiv](https://arxiv.org/abs/2608.25386) 
 
 Official PyTorch implementation of **MTAR**.
 
