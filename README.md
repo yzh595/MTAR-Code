@@ -1,4 +1,4 @@
-# Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation
+# Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation📄 [arXiv](https://arxiv.org/abs/2608.25386) 
 
 Official PyTorch implementation of **MTAR**.
 
@@ -83,12 +83,15 @@ EVAL_CONDA_ENV=lla bash evaluate_c2i_mtar.sh \
 ## Citation
 
 ```bibtex
-@inproceedings{niu2026mtar,
-  title     = {Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation},
-  author    = {Niu, Guo and Yao, Xiongfei and Wang, Teng and Zhu, Nannan},
-  
-  year      = {2026},
- 
+@article{niu2026mtar,
+  title         = {Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation},
+  author        = {Niu, Guo and Yao, Xiongfei and Wang, Teng and Zhu, Nannan},
+  journal       = {arXiv preprint arXiv:2608.25386},
+  year          = {2026},
+  eprint        = {2608.25386},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  doi           = {10.48550/arXiv.2608.25386}
 }
 ```
 
