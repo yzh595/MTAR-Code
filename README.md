@@ -10,13 +10,40 @@ dropping. The released Large-model recipe uses a GPT-L student (layer 24), a fro
 NAR-XL teacher (layer 36), and current/future feature targets at offsets **0, 1, 16**.
 The original MTAR entry points below are preserved.
 
-**[MTAR++ setup, data, training, sampling and evaluation →](docs/MTARPP.md)**
+MTAR++ uses the existing data preparation, sampling, evaluation and shared
+training configuration. Only the Student model, Teacher definition and training
+entry are added:
+
+```text
+autoregressive/models/MTAR++_gpt.py
+autoregressive/models/NAR_gpt.py
+autoregressive/train/train_c2i_MATR++.py
+```
 
 ```bash
 # Full ImageNet, 300 epochs, two GPUs; paths are supplied by you.
-CUDA_VISIBLE_DEVICES=0,1 bash train_c2i_mtarpp.sh \
-    /path/to/imagenet256_features /path/to/NAR-imagenet-256-XL.pt ./results/mtarpp_l
+METHOD=MTAR++ CUDA_DEVICES=0,1 \
+TEACHER_CKPT=/path/to/NAR-imagenet-256-XL.pt \
+bash train_c2i_mtar.sh /path/to/imagenet256_features ./results/mtarpp_l
+
+# Reuse the same NTP-only sampler; only specify the Large backbone.
+GPT_MODEL=GPT-L CUDA_VISIBLE_DEVICES=1 bash sample_c2i_mtar.sh \
+    /path/to/1500000.pt /path/to/vq_ds16_c2i.pt 1.80 ./fid_samples/mtarpp_l 50000
 ```
+
+The MTAR++ preset keeps batch 256, LR 1e-4, seed 0, bf16, compile and EMA.
+Feature-loss weights for offsets 0/1/16 are all 1.0, and TCR weight is 0.2.
+Student SD50 runs for the first 240 epochs and is disabled for the final 60;
+Teacher group dropping stays at 50% throughout. Retained Teacher target groups
+must cover all three feature targets. A terminal image token is retained as
+additional Teacher context. Supply a pretrained NAR-XL checkpoint compatible with
+`NAR_gpt.py`; model weights and ImageNet data are not distributed here.
+
+Checkpoints follow steps 1200000/1250000/1300000/1350000/1400000/1450000/1500000.
+The original full split has 5004 steps per epoch (1501200 steps total), so the
+last scheduled checkpoint is near the end rather than at the very last step.
+Common settings can be overridden with `EPOCHS`, `LR`, `GLOBAL_BATCH_SIZE`,
+`GLOBAL_SEED` and `GPT_MODEL`; changing them changes the recipe.
 
 The public MTAR++ recipe uses **power-normalized Student SD** with temperature
 0.35, as an intentional update to the historical 300-epoch run. Historical
@@ -25,7 +52,7 @@ metrics are not presented as measurements of this updated release.
 | Framework | Auxiliary supervision | Efficient training | Entry point |
 |---|---|---|---|
 | MTAR | Discrete future-token prediction (MTP) | Student SD | `train_c2i_mtar.sh` |
-| MTAR++ | Teacher features at offsets 0/1/16 (TG-MFP) | Student SD + target-aware Teacher group drop | `train_c2i_mtarpp.sh` |
+| MTAR++ | Teacher features at offsets 0/1/16 (TG-MFP) | Student SD + target-aware Teacher group drop | `METHOD=MTAR++ bash train_c2i_mtar.sh …` |
 
 ![Overview of the MTP and token-level contrastive regularization components in MTAR](assets/mtar_overview.png)
 
@@ -51,6 +78,11 @@ At 300 epochs, MTAR-B and MTAR-L provide 1.27x and 1.39x training speedups, resp
 ## Setup
 
 Use a [LlamaGen](https://github.com/FoundationVision/LlamaGen)-compatible PyTorch environment. 
+
+The shared training requirements are in `requirements.txt` (tested with Python
+3.10, PyTorch 2.2.1+cu121 and torchvision 0.17.1+cu121).
+`python -m unittest discover -s tests -p 'test_mtarpp*.py' -v` runs the small
+CPU regression tests; it does not establish full-run convergence or FID.
 
 ## Data preparation
 

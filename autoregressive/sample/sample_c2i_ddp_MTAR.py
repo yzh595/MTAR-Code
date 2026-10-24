@@ -16,6 +16,26 @@ from autoregressive.models.gpt import GPT_models
 from autoregressive.models.generate import generate
 
 
+def load_ntp_weights(model, model_weight):
+    """Shared MTAR/MTAR++ loader: require every NTP tensor, omit auxiliary heads."""
+    model_weight = dict(model_weight)
+    if "output_t1.weight" in model_weight and "output.weight" not in model_weight:
+        model_weight["output.weight"] = model_weight["output_t1.weight"]
+        print("Mapped checkpoint output_t1.weight -> NTP output.weight")
+    target_state = model.state_dict()
+    compatible_weight = {
+        key: value for key, value in model_weight.items()
+        if key in target_state and value.shape == target_state[key].shape
+    }
+    missing = sorted(set(target_state) - set(compatible_weight))
+    if missing:
+        raise RuntimeError("Checkpoint is missing required NTP inference parameters: "
+                           + ", ".join(missing))
+    print(f"Loaded all {len(compatible_weight)} NTP tensors; "
+          f"ignored {len(set(model_weight) - set(compatible_weight))} auxiliary tensors.")
+    model.load_state_dict(compatible_weight, strict=True)
+
+
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
     Builds a single .npz file from a folder of .png samples.
@@ -74,30 +94,7 @@ def main(args):
         model_weight = checkpoint["state_dict"]
     else:
         raise Exception("please check model weight, maybe add --from-fsdp to run command")
-    model_weight = dict(model_weight)
-    if "output_t1.weight" in model_weight and "output.weight" not in model_weight:
-        model_weight["output.weight"] = model_weight["output_t1.weight"]
-        print("Mapped checkpoint output_t1.weight -> NTP output.weight")
-
-    target_state = gpt_model.state_dict()
-    compatible_weight = {
-        key: value
-        for key, value in model_weight.items()
-        if key in target_state and value.shape == target_state[key].shape
-    }
-    missing_keys = sorted(set(target_state) - set(compatible_weight))
-    if missing_keys:
-        raise RuntimeError(
-            "MTAR checkpoint is missing required NTP inference parameters: "
-            + ", ".join(missing_keys)
-        )
-
-    ignored_keys = sorted(set(model_weight) - set(compatible_weight))
-    print(
-        f"Loaded all {len(compatible_weight)} NTP-only inference parameters; "
-        f"ignored {len(ignored_keys)} training-only MTP/TCR parameters."
-    )
-    gpt_model.load_state_dict(compatible_weight, strict=True)
+    load_ntp_weights(gpt_model, model_weight)
     gpt_model.eval()
     del checkpoint
 

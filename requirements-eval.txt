@@ -1,6 +1,0 @@
-# Separate evaluation environment: do not mix with the training pins.
-tensorflow==2.15.1
-numpy==1.23.5
-scipy==1.11.4
-requests>=2.31,<3
-tqdm>=4.65,<5

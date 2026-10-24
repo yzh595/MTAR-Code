@@ -1,5 +1,5 @@
 """CPU smoke/regression checks; no ImageNet or pretrained checkpoint required."""
-import json
+import importlib
 import os
 from pathlib import Path
 import subprocess
@@ -14,14 +14,17 @@ from torch.nn import functional as F
 
 from autoregressive.models.gpt import ModelArgs as DecoderArgs, Transformer as Decoder
 from autoregressive.models.generate import generate
-from mtarpp.checkpoint import load_ntp_weights
-from mtarpp.dataset import CustomDataset
-from mtarpp.model import ModelArgs, Transformer
-from mtarpp.teacher import ModelArgs as TeacherArgs, Transformer as Teacher
-from mtarpp.train import (
-    build_dino_keep_indices, build_grouped_teacher_indices,
-    build_sparse_proximity_mask, get_epoch_drop_rate,
-)
+from autoregressive.sample.sample_c2i_ddp_MTAR import load_ntp_weights
+from dataset.imagenet import CustomDataset
+from autoregressive.models.NAR_gpt import ModelArgs as TeacherArgs, Transformer as Teacher
+
+student_module = importlib.import_module("autoregressive.models.MTAR++_gpt")
+trainer = importlib.import_module("autoregressive.train.train_c2i_MATR++")
+ModelArgs, Transformer = student_module.ModelArgs, student_module.Transformer
+build_dino_keep_indices = trainer.build_dino_keep_indices
+build_grouped_teacher_indices = trainer.build_grouped_teacher_indices
+build_sparse_proximity_mask = trainer.build_sparse_proximity_mask
+get_epoch_drop_rate = trainer.get_epoch_drop_rate
 
 
 def tiny_model():
@@ -181,15 +184,12 @@ class MtarppTests(unittest.TestCase):
                 (root / f'imagenet256_{kind}').mkdir()
             np.save(root / 'imagenet256_codes/0.npy', np.zeros((1, 2, 256)))
             with self.assertRaisesRegex(ValueError, 'matching'):
-                CustomDataset(str(root / 'imagenet256_codes'), str(root / 'imagenet256_labels'))
+                CustomDataset(str(root / 'imagenet256_codes'), str(root / 'imagenet256_labels'), strict=True)
 
     def test_recipe_matches_launch_constants(self):
         root = Path(__file__).resolve().parents[1]
-        recipe = json.loads((root / 'configs/mtarpp/imagenet256_gptl_300ep.json').read_text())
-        launcher = (root / 'train_c2i_mtarpp.sh').read_text()
-        self.assertEqual(recipe['student_sampling'], 'power_normalized_without_replacement')
-        self.assertEqual(recipe['feature_offsets'], [0, 1, 16])
-        for flag in ('--epochs 300', '--lr 1e-4', '--global-batch-size 256',
+        launcher = (root / 'train_c2i_mtar.sh').read_text()
+        for flag in ('--future-feature-offsets 1,16', '--max-student-drop-rate 0.5',
                      '--student-target-layers 24', '--teacher-target-layers 36'):
             self.assertIn(flag, launcher)
 
@@ -202,20 +202,36 @@ class MtarppTests(unittest.TestCase):
                 (data / f'imagenet256_{kind}').mkdir(parents=True)
             checkpoint = work / 'placeholder checkpoint.pt'
             checkpoint.write_bytes(b'dry-run-only')
-            environment = dict(os.environ, DRY_RUN='1', CUDA_VISIBLE_DEVICES='0,1')
+            environment = dict(os.environ, DRY_RUN='1', CUDA_DEVICES='0,1',
+                               METHOD='MTAR++', TEACHER_CKPT=str(checkpoint))
             train = subprocess.run(
-                ['bash', str(root / 'train_c2i_mtarpp.sh'), str(data),
-                 str(checkpoint), str(work / 'output with spaces')],
+                ['bash', str(root / 'train_c2i_mtar.sh'), str(data),
+                 str(work / 'output with spaces')],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
             self.assertIn('--nproc_per_node=2', train.stdout)
-            self.assertIn('mtarpp.train', train.stdout)
+            self.assertIn('train_c2i_MATR', train.stdout)
+            for flag in ('--epochs 300', '--lr 1e-4', '--global-batch-size 256',
+                         '--gpt-model GPT-L', '--global-seed 0'):
+                self.assertIn(flag, train.stdout)
+            environment.update(METHOD='MTAR', CUDA_DEVICES='0')
+            original = subprocess.run(
+                ['bash', str(root / 'train_c2i_mtar.sh'), str(data),
+                 str(work / 'original mtar output')],
+                cwd=work, env=environment, capture_output=True, text=True, check=True,
+            )
+            self.assertIn('train_c2i_MTAR.py', original.stdout)
+            for flag in ('--gpt-model GPT-B', '--global-seed 42', '--nproc_per_node=1'):
+                self.assertIn(flag, original.stdout)
+            self.assertNotIn('--teacher-model', original.stdout)
+            environment['GPT_MODEL'] = 'GPT-L'
             sample = subprocess.run(
-                ['bash', str(root / 'sample_c2i_mtarpp.sh'), str(checkpoint),
+                ['bash', str(root / 'sample_c2i_mtar.sh'), str(checkpoint),
                  str(checkpoint), '1.80', str(work / 'samples with spaces'), '50000'],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
-            self.assertIn('mtarpp.sample', sample.stdout)
+            self.assertIn('sample_c2i_ddp_MTAR.py', sample.stdout)
+            self.assertIn('--gpt-model GPT-L', sample.stdout)
             self.assertIn('--num-fid-samples 50000', sample.stdout)
 
 

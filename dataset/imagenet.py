@@ -325,7 +325,8 @@ def resize_flat_scores_to_match_tokens(scores, target_len):
     return resized
 
 class CustomDataset(Dataset):
-    def __init__(self, feature_dir, label_dir):
+    def __init__(self, feature_dir, label_dir, strict=False):
+        self.strict = strict
         self.feature_dir = feature_dir
         self.label_dir = label_dir
         self.score_dir = feature_dir.replace('_codes', '_scores')
@@ -360,6 +361,11 @@ class CustomDataset(Dataset):
         
         if not self.feature_files:
             raise FileNotFoundError(f"错误：在目录 {feature_dir} 中没有找到任何 .npy 文件。")
+
+        if self.strict:
+            stems = lambda paths: [os.path.basename(path) for path in paths]
+            if not self.use_scores or stems(self.feature_files) != stems(self.label_files) or stems(self.feature_files) != stems(self.score_files):
+                raise ValueError("MTAR++ requires matching code, label and score .npy filenames.")
             
         print(f"成功找到 {len(self.feature_files)} 个数据样本。")
 
@@ -397,6 +403,8 @@ class CustomDataset(Dataset):
                 scores = np.load(score_path)
 
         except Exception as e:
+            if self.strict:
+                raise RuntimeError(f"Cannot load aligned training sample: {feature_path}") from e
             print(f"Error loading {feature_path}: {e}")
             # Fallback 也要匹配返回长度
             if self.load_semantic_scores:
@@ -455,7 +463,7 @@ def build_imagenet_code(args):
     assert os.path.exists(feature_dir), f"数据目录不存在: {feature_dir}"
     assert os.path.exists(label_dir), f"标签目录不存在: {label_dir}"
         
-    return CustomDataset(feature_dir, label_dir)
+    return CustomDataset(feature_dir, label_dir, strict=getattr(args, "strict_semantic_data", False))
 
 def build_dataset(args, transform=None):
     if args.dataset == 'imagenet':

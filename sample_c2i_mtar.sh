@@ -31,18 +31,22 @@ GENERATE_SCRIPT="$PROJECT_ROOT/autoregressive/models/generate.py"
 for required in "$GPT_CKPT" "$VQ_CKPT" "$SAMPLE_SCRIPT" "$GENERATE_SCRIPT"; do
     [[ -s "$required" ]] || { echo "Missing required file: $required" >&2; exit 1; }
 done
+GPT_CKPT=$(cd "$(dirname "$GPT_CKPT")" && pwd)/$(basename "$GPT_CKPT")
+VQ_CKPT=$(cd "$(dirname "$VQ_CKPT")" && pwd)/$(basename "$VQ_CKPT")
 
 TORCHRUN=${TORCHRUN:-torchrun}
 NUM_GPUS=${NUM_GPUS:-1}
 MASTER_PORT=${MASTER_PORT:-29663}
 PER_PROC_BATCH_SIZE=${PER_PROC_BATCH_SIZE:-32}
 GLOBAL_SEED=${GLOBAL_SEED:-0}
+GPT_MODEL=${GPT_MODEL:-GPT-B}
 
 if [[ -z "${CUDA_VISIBLE_DEVICES:-}" ]]; then
     export CUDA_VISIBLE_DEVICES=0
 fi
 export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH:-}"
 mkdir -p "$SAMPLE_DIR"
+SAMPLE_DIR=$(cd "$SAMPLE_DIR" && pwd)
 cd "$PROJECT_ROOT"
 
 echo "MTAR sampling"
@@ -53,13 +57,13 @@ echo "  samples: $NUM_SAMPLES"
 echo "  output root: $SAMPLE_DIR"
 echo "  GPUs: $CUDA_VISIBLE_DEVICES (processes=$NUM_GPUS)"
 
-"$TORCHRUN" \
+COMMAND=("$TORCHRUN" \
     --nnodes=1 \
     --nproc_per_node="$NUM_GPUS" \
     --node_rank=0 \
     --master_port="$MASTER_PORT" \
     "$SAMPLE_SCRIPT" \
-    --gpt-model GPT-B \
+    --gpt-model "$GPT_MODEL" \
     --gpt-ckpt "$GPT_CKPT" \
     --gpt-type c2i \
     --vq-model VQ-16 \
@@ -77,7 +81,10 @@ echo "  GPUs: $CUDA_VISIBLE_DEVICES (processes=$NUM_GPUS)"
     --num-fid-samples "$NUM_SAMPLES" \
     --global-seed "$GLOBAL_SEED" \
     --precision bf16 \
-    --compile
+    --compile)
+printf 'Command: '; printf '%q ' "${COMMAND[@]}"; printf '\n'
+[[ ${DRY_RUN:-0} == 1 ]] && exit 0
+"${COMMAND[@]}"
 
 CKPT_NAME=$(basename "$GPT_CKPT")
 CKPT_STEM=${CKPT_NAME%.pt}
@@ -88,7 +95,7 @@ printf -v CFG_CANON '%.15g' "$CFG_SCALE"
 if [[ "$CFG_CANON" != *.* && "$CFG_CANON" != *e* && "$CFG_CANON" != *E* ]]; then
     CFG_CANON="${CFG_CANON}.0"
 fi
-NPZ_PATH="$SAMPLE_DIR/GPT-B-${CKPT_STEM}-size-256-size-256-VQ-16-topk-0-topp-1.0-temperature-1.0-cfg-${CFG_CANON}-seed-${GLOBAL_SEED}.npz"
+NPZ_PATH="$SAMPLE_DIR/${GPT_MODEL}-${CKPT_STEM}-size-256-size-256-VQ-16-topk-0-topp-1.0-temperature-1.0-cfg-${CFG_CANON}-seed-${GLOBAL_SEED}.npz"
 [[ -s "$NPZ_PATH" ]] || {
     echo "Sampling finished but the expected NPZ was not found: $NPZ_PATH" >&2
     exit 1

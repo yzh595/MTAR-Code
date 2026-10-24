@@ -12,6 +12,7 @@ from copy import deepcopy
 import os
 import time
 import inspect
+import importlib
 import argparse
 import random
 import numpy as np
@@ -20,13 +21,14 @@ import torch.nn.functional as F
 from utils.logger import create_logger
 from utils.distributed import init_distributed_mode
 from utils.ema import update_ema, requires_grad
-from mtarpp.dataset import build_dataset
+from dataset.build import build_dataset
 
 # Student: physically sparse AR input + grouped Teacher-feature heads
-from mtarpp.model import GPT_models
+# importlib supports the public filename containing literal '+' characters.
+GPT_models = importlib.import_module("autoregressive.models.MTAR++_gpt").GPT_models
 
 # Teacher: physical sparse forward with ids_keep
-from mtarpp.teacher import GPT_models as NAR_models
+from autoregressive.models.NAR_gpt import GPT_models as NAR_models
 
 
 TEACHER_CONFIGS = {
@@ -918,6 +920,7 @@ def main(args):
         logger,
     )
 
+    args.strict_semantic_data = True
     dataset = build_dataset(args)
 
     sampler = DistributedSampler(
