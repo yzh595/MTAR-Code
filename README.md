@@ -6,10 +6,7 @@
 
 
 
-| Framework | Auxiliary supervision | Efficient training | Entry point |
-|---|---|---|---|
-| MTAR | Discrete future-token prediction (MTP) | Student SD | `scripts/train_c2i.sh` |
-| MTAR++ | Teacher features at offsets 0/1/16 (TG-MFP) | Student SD + target-aware Teacher group drop | `METHOD=MTAR++ bash scripts/train_c2i.sh …` |
+
 
 ![Overview of the MTP and token-level contrastive regularization components in MTAR](assets/mtar_overview.png)
 
