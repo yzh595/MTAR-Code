@@ -4,17 +4,17 @@ set -euo pipefail
 # Sample ImageNet-256 images with the MTAR checkpoint loader.
 #
 # Usage:
-#   bash sample_c2i_mtar.sh GPT_CKPT VQ_CKPT [CFG] [SAMPLE_DIR] [NUM_SAMPLES]
+#   bash scripts/sample_c2i_mtar.sh GPT_CKPT VQ_CKPT [CFG] [SAMPLE_DIR] [NUM_SAMPLES]
 #
 # Example:
-#   CUDA_VISIBLE_DEVICES=0 bash sample_c2i_mtar.sh \
+#   CUDA_VISIBLE_DEVICES=0 bash scripts/sample_c2i_mtar.sh \
 #       /path/to/0250000.pt \
 #       /path/to/vq_ds16_c2i.pt \
 #       2.25 \
 #       ./fid_samples \
 #       50000
 
-PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 GPT_CKPT=${1:-}
 VQ_CKPT=${2:-}
 CFG_SCALE=${3:-2.0}

@@ -24,10 +24,10 @@ autoregressive/train/train_c2i_MATR++.py
 # Full ImageNet, 300 epochs, two GPUs; paths are supplied by you.
 METHOD=MTAR++ CUDA_DEVICES=0,1 \
 TEACHER_CKPT=/path/to/NAR-imagenet-256-XL.pt \
-bash train_c2i_mtar.sh /path/to/imagenet256_features ./results/mtarpp_l
+bash scripts/train_c2i_mtar.sh /path/to/imagenet256_features ./results/mtarpp_l
 
 # Reuse the same NTP-only sampler; only specify the Large backbone.
-GPT_MODEL=GPT-L CUDA_VISIBLE_DEVICES=1 bash sample_c2i_mtar.sh \
+GPT_MODEL=GPT-L CUDA_VISIBLE_DEVICES=1 bash scripts/sample_c2i_mtar.sh \
     /path/to/1500000.pt /path/to/vq_ds16_c2i.pt 1.80 ./fid_samples/mtarpp_l 50000
 ```
 
@@ -51,8 +51,8 @@ metrics are not presented as measurements of this updated release.
 
 | Framework | Auxiliary supervision | Efficient training | Entry point |
 |---|---|---|---|
-| MTAR | Discrete future-token prediction (MTP) | Student SD | `train_c2i_mtar.sh` |
-| MTAR++ | Teacher features at offsets 0/1/16 (TG-MFP) | Student SD + target-aware Teacher group drop | `METHOD=MTAR++ bash train_c2i_mtar.sh …` |
+| MTAR | Discrete future-token prediction (MTP) | Student SD | `scripts/train_c2i_mtar.sh` |
+| MTAR++ | Teacher features at offsets 0/1/16 (TG-MFP) | Student SD + target-aware Teacher group drop | `METHOD=MTAR++ bash scripts/train_c2i_mtar.sh …` |
 
 ![Overview of the MTP and token-level contrastive regularization components in MTAR](assets/mtar_overview.png)
 
@@ -89,7 +89,7 @@ CPU regression tests; it does not establish full-run convergence or FID.
 Extract aligned VQ tokens, labels, and DINOv3 semantic scores:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 bash dinov3/extract_dinov3_scores.sh \
+CUDA_VISIBLE_DEVICES=0,1 bash scripts/extract_dinov3_scores.sh \
     /path/to/imagenet/train \
     /path/to/imagenet256_features \
     /path/to/vq_ds16_c2i.pt
@@ -109,19 +109,19 @@ imagenet256_features/
 The default launcher trains MTAR-B for 300 epochs with 50% semantic dropping during the first 80% of training, followed by full-token training during the last 20%.
 
 ```bash
-CUDA_DEVICES=0 bash train_c2i_mtar.sh \
+CUDA_DEVICES=0 bash scripts/train_c2i_mtar.sh \
     /path/to/imagenet256_features \
     /path/to/results
 ```
 
-The launcher enables EMA and `torch.compile` and uses the main paper settings. Other settings can be changed directly in `train_c2i_mtar.sh`.
+The launcher enables EMA and `torch.compile` and uses the main paper settings. Other settings can be changed directly in `scripts/train_c2i_mtar.sh`.
 
 ## Sampling and evaluation
 
 Generate 50,000 samples:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 bash sample_c2i_mtar.sh \
+CUDA_VISIBLE_DEVICES=0 bash scripts/sample_c2i_mtar.sh \
     /path/to/mtar_checkpoint.pt \
     /path/to/vq_ds16_c2i.pt \
     2.0 \
@@ -132,7 +132,7 @@ CUDA_VISIBLE_DEVICES=0 bash sample_c2i_mtar.sh \
 Evaluate the generated NPZ file:
 
 ```bash
-EVAL_CONDA_ENV=lla bash evaluate_c2i_mtar.sh \
+EVAL_CONDA_ENV=lla bash scripts/evaluate_c2i_mtar.sh \
     /path/to/VIRTUAL_imagenet256_labeled.npz \
     /path/to/generated_samples.npz
 ```

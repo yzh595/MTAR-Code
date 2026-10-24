@@ -16,7 +16,7 @@ Run from the MTAR repository root:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 \
-bash assets/extract_dinov3_scores.sh \
+bash scripts/extract_dinov3_scores.sh \
     /path/to/imagenet/train \
     /path/to/features_dinov3_large_flip_all \
     /path/to/vq_ds16_c2i.pt \

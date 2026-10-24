@@ -4,13 +4,13 @@ set -euo pipefail
 # Evaluate an MTAR sample NPZ with the bundled OpenAI-style evaluator.
 #
 # Usage:
-#   bash evaluate_c2i_mtar.sh REFERENCE_NPZ SAMPLE_NPZ [EVALUATION_LOG]
+#   bash scripts/evaluate_c2i_mtar.sh REFERENCE_NPZ SAMPLE_NPZ [EVALUATION_LOG]
 #
 # Run inside an evaluation environment containing TensorFlow, NumPy and SciPy.
 # To select a Conda environment without activating it first:
-#   EVAL_CONDA_ENV=lla bash evaluate_c2i_mtar.sh REF_NPZ SAMPLE_NPZ
+#   EVAL_CONDA_ENV=lla bash scripts/evaluate_c2i_mtar.sh REF_NPZ SAMPLE_NPZ
 
-PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 REFERENCE_NPZ=${1:-}
 SAMPLE_NPZ=${2:-}
 EVALUATION_LOG=${3:-}

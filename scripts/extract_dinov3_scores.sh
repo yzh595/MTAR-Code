@@ -4,10 +4,10 @@ set -euo pipefail
 # Extract aligned VQ codes, ImageNet labels, and DINOv3 semantic scores.
 #
 # Usage:
-#   bash dinov3/extract_dinov3_scores.sh DATA_PATH CODE_PATH VQ_CKPT [DINO_MODEL]
+#   bash scripts/extract_dinov3_scores.sh DATA_PATH CODE_PATH VQ_CKPT [DINO_MODEL]
 #
 # Example:
-#   CUDA_VISIBLE_DEVICES=0,1 bash dinov3/extract_dinov3_scores.sh \
+#   CUDA_VISIBLE_DEVICES=0,1 bash scripts/extract_dinov3_scores.sh \
 #       /path/to/imagenet/train \
 #       /path/to/features_dinov3_large_flip_all \
 #       /path/to/vq_ds16_c2i.pt \

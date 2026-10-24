@@ -188,10 +188,16 @@ class MtarppTests(unittest.TestCase):
 
     def test_recipe_matches_launch_constants(self):
         root = Path(__file__).resolve().parents[1]
-        launcher = (root / 'train_c2i_mtar.sh').read_text()
+        launcher = (root / 'scripts/train_c2i_mtar.sh').read_text()
         for flag in ('--future-feature-offsets 1,16', '--max-student-drop-rate 0.5',
                      '--student-target-layers 24', '--teacher-target-layers 36'):
             self.assertIn(flag, launcher)
+
+    def test_shell_entry_points_are_grouped_under_scripts(self):
+        root = Path(__file__).resolve().parents[1]
+        misplaced = [str(path.relative_to(root)) for path in root.rglob('*.sh')
+                     if not path.is_relative_to(root / 'scripts')]
+        self.assertEqual(misplaced, [])
 
     def test_launchers_dry_run_and_paths_with_spaces(self):
         root = Path(__file__).resolve().parents[1]
@@ -205,7 +211,7 @@ class MtarppTests(unittest.TestCase):
             environment = dict(os.environ, DRY_RUN='1', CUDA_DEVICES='0,1',
                                METHOD='MTAR++', TEACHER_CKPT=str(checkpoint))
             train = subprocess.run(
-                ['bash', str(root / 'train_c2i_mtar.sh'), str(data),
+                ['bash', str(root / 'scripts/train_c2i_mtar.sh'), str(data),
                  str(work / 'output with spaces')],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
@@ -216,7 +222,7 @@ class MtarppTests(unittest.TestCase):
                 self.assertIn(flag, train.stdout)
             environment.update(METHOD='MTAR', CUDA_DEVICES='0')
             original = subprocess.run(
-                ['bash', str(root / 'train_c2i_mtar.sh'), str(data),
+                ['bash', str(root / 'scripts/train_c2i_mtar.sh'), str(data),
                  str(work / 'original mtar output')],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
@@ -226,7 +232,7 @@ class MtarppTests(unittest.TestCase):
             self.assertNotIn('--teacher-model', original.stdout)
             environment['GPT_MODEL'] = 'GPT-L'
             sample = subprocess.run(
-                ['bash', str(root / 'sample_c2i_mtar.sh'), str(checkpoint),
+                ['bash', str(root / 'scripts/sample_c2i_mtar.sh'), str(checkpoint),
                  str(checkpoint), '1.80', str(work / 'samples with spaces'), '50000'],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )

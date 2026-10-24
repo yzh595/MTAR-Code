@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Shared MTAR / MTAR++ launcher.
-# MTAR:   bash train_c2i_mtar.sh FEATURE_DIR [OUTPUT_DIR]
-# MTAR++: METHOD=MTAR++ TEACHER_CKPT=/path/to/NAR-XL.pt bash train_c2i_mtar.sh FEATURE_DIR OUTPUT_DIR
-PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# MTAR:   bash scripts/train_c2i_mtar.sh FEATURE_DIR [OUTPUT_DIR]
+# MTAR++: METHOD=MTAR++ TEACHER_CKPT=/path/to/NAR-XL.pt bash scripts/train_c2i_mtar.sh FEATURE_DIR OUTPUT_DIR
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CODE_PATH=${1:-${CODE_PATH:-}}
 RESULTS_DIR=${2:-${RESULTS_DIR:-"$PROJECT_ROOT/results"}}
 [[ -n "$CODE_PATH" ]] || { echo "Usage: $0 CODE_PATH [RESULTS_DIR]" >&2; exit 2; }
