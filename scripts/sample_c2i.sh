@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sample ImageNet-256 images with the MTAR checkpoint loader.
+# Sample ImageNet-256 images with the shared NTP-only checkpoint loader.
 #
 # Usage:
-#   bash scripts/sample_c2i_mtar.sh GPT_CKPT VQ_CKPT [CFG] [SAMPLE_DIR] [NUM_SAMPLES]
+#   bash scripts/sample_c2i.sh GPT_CKPT VQ_CKPT [CFG] [SAMPLE_DIR] [NUM_SAMPLES]
 #
 # Example:
-#   CUDA_VISIBLE_DEVICES=0 bash scripts/sample_c2i_mtar.sh \
+#   CUDA_VISIBLE_DEVICES=0 bash scripts/sample_c2i.sh \
 #       /path/to/0250000.pt \
 #       /path/to/vq_ds16_c2i.pt \
 #       2.25 \
@@ -26,7 +26,7 @@ if [[ -z "$GPT_CKPT" || -z "$VQ_CKPT" ]]; then
     exit 1
 fi
 
-SAMPLE_SCRIPT="$PROJECT_ROOT/autoregressive/sample/sample_c2i_ddp_MTAR.py"
+SAMPLE_SCRIPT="$PROJECT_ROOT/autoregressive/sample/sample_c2i_ddp.py"
 GENERATE_SCRIPT="$PROJECT_ROOT/autoregressive/models/generate.py"
 for required in "$GPT_CKPT" "$VQ_CKPT" "$SAMPLE_SCRIPT" "$GENERATE_SCRIPT"; do
     [[ -s "$required" ]] || { echo "Missing required file: $required" >&2; exit 1; }
@@ -49,7 +49,7 @@ mkdir -p "$SAMPLE_DIR"
 SAMPLE_DIR=$(cd "$SAMPLE_DIR" && pwd)
 cd "$PROJECT_ROOT"
 
-echo "MTAR sampling"
+echo "Class-conditional sampling"
 echo "  checkpoint: $GPT_CKPT"
 echo "  VQ checkpoint: $VQ_CKPT"
 echo "  CFG: $CFG_SCALE"

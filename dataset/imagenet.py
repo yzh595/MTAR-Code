@@ -365,7 +365,7 @@ class CustomDataset(Dataset):
         if self.strict:
             stems = lambda paths: [os.path.basename(path) for path in paths]
             if not self.use_scores or stems(self.feature_files) != stems(self.label_files) or stems(self.feature_files) != stems(self.score_files):
-                raise ValueError("MTAR++ requires matching code, label and score .npy filenames.")
+                raise ValueError("Semantic training requires matching code, label and score .npy filenames.")
             
         print(f"成功找到 {len(self.feature_files)} 个数据样本。")
 

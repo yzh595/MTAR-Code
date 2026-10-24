@@ -17,7 +17,7 @@ from autoregressive.models.generate import generate
 
 
 def load_ntp_weights(model, model_weight):
-    """Shared MTAR/MTAR++ loader: require every NTP tensor, omit auxiliary heads."""
+    """Load every standard NTP tensor and omit training-only auxiliary heads."""
     model_weight = dict(model_weight)
     if "output_t1.weight" in model_weight and "output.weight" not in model_weight:
         model_weight["output.weight"] = model_weight["output_t1.weight"]

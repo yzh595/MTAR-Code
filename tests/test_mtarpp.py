@@ -14,7 +14,7 @@ from torch.nn import functional as F
 
 from autoregressive.models.gpt import ModelArgs as DecoderArgs, Transformer as Decoder
 from autoregressive.models.generate import generate
-from autoregressive.sample.sample_c2i_ddp_MTAR import load_ntp_weights
+from autoregressive.sample.sample_c2i_ddp import load_ntp_weights
 from dataset.imagenet import CustomDataset
 from autoregressive.models.NAR_gpt import ModelArgs as TeacherArgs, Transformer as Teacher
 
@@ -188,7 +188,7 @@ class MtarppTests(unittest.TestCase):
 
     def test_recipe_matches_launch_constants(self):
         root = Path(__file__).resolve().parents[1]
-        launcher = (root / 'scripts/train_c2i_mtar.sh').read_text()
+        launcher = (root / 'scripts/train_c2i.sh').read_text()
         for flag in ('--future-feature-offsets 1,16', '--max-student-drop-rate 0.5',
                      '--student-target-layers 24', '--teacher-target-layers 36'):
             self.assertIn(flag, launcher)
@@ -211,7 +211,7 @@ class MtarppTests(unittest.TestCase):
             environment = dict(os.environ, DRY_RUN='1', CUDA_DEVICES='0,1',
                                METHOD='MTAR++', TEACHER_CKPT=str(checkpoint))
             train = subprocess.run(
-                ['bash', str(root / 'scripts/train_c2i_mtar.sh'), str(data),
+                ['bash', str(root / 'scripts/train_c2i.sh'), str(data),
                  str(work / 'output with spaces')],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
@@ -222,7 +222,7 @@ class MtarppTests(unittest.TestCase):
                 self.assertIn(flag, train.stdout)
             environment.update(METHOD='MTAR', CUDA_DEVICES='0')
             original = subprocess.run(
-                ['bash', str(root / 'scripts/train_c2i_mtar.sh'), str(data),
+                ['bash', str(root / 'scripts/train_c2i.sh'), str(data),
                  str(work / 'original mtar output')],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
@@ -232,11 +232,11 @@ class MtarppTests(unittest.TestCase):
             self.assertNotIn('--teacher-model', original.stdout)
             environment['GPT_MODEL'] = 'GPT-L'
             sample = subprocess.run(
-                ['bash', str(root / 'scripts/sample_c2i_mtar.sh'), str(checkpoint),
+                ['bash', str(root / 'scripts/sample_c2i.sh'), str(checkpoint),
                  str(checkpoint), '1.80', str(work / 'samples with spaces'), '50000'],
                 cwd=work, env=environment, capture_output=True, text=True, check=True,
             )
-            self.assertIn('sample_c2i_ddp_MTAR.py', sample.stdout)
+            self.assertIn('sample_c2i_ddp.py', sample.stdout)
             self.assertIn('--gpt-model GPT-L', sample.stdout)
             self.assertIn('--num-fid-samples 50000', sample.stdout)
 
