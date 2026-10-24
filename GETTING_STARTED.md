@@ -55,7 +55,7 @@ bash scripts/autoregressive/sample_c2i.sh --vq-ckpt ./pretrained_models/vq_ds16_
 
 
 ### Evaluation
-Before evaluation, please refer [evaluation readme](evaluations/c2i/README.md) to install required packages. 
+Before evaluation, please refer [evaluation readme](evaluations/README.md) to install required packages.
 ```
-python3 evaluations/c2i/evaluator.py VIRTUAL_imagenet256_labeled.npz samples/GPT-B-c2i_B-size-384-size-256-VQ-16-topk-0-topp-1.0-temperature-1.0-cfg-2.0-seed-0.npz
+python3 evaluations/evaluator.py VIRTUAL_imagenet256_labeled.npz samples/GPT-B-c2i_B-size-384-size-256-VQ-16-topk-0-topp-1.0-temperature-1.0-cfg-2.0-seed-0.npz
 ```

@@ -1,0 +1,15 @@
+# Training and NTP sampling environment (Linux, CUDA 12.1).
+# conda env create -f environment.yml
+name: ar-image
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu121
+      - torch==2.2.1+cu121
+      - torchvision==0.17.1+cu121
+      - numpy==1.26.4
+      - Pillow==10.4.0
+      - tqdm>=4.65,<5
