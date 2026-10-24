@@ -1,53 +1,10 @@
 # Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation [arXiv](https://arxiv.org/abs/2608.25386) 
 
-Official PyTorch implementation of **MTAR**, with the **MTAR++** full-ImageNet training code.
 
-## MTAR++ code release
 
-MTAR++ replaces discrete future-token auxiliary supervision with **Teacher-Guided
-Multi-Feature Prediction (TG-MFP)**, and combines it with TCR and dual-path semantic
-dropping. The released Large-model recipe uses a GPT-L student (layer 24), a frozen
-NAR-XL teacher (layer 36), and current/future feature targets at offsets **0, 1, 16**.
-The original MTAR entry points below are preserved.
 
-MTAR++ uses the existing data preparation, sampling, evaluation and shared
-training configuration. Only the Student model, Teacher definition and training
-entry are added:
 
-```text
-autoregressive/models/MTAR++_gpt.py
-autoregressive/models/NAR_gpt.py
-autoregressive/train/train_c2i_MATR++.py
-```
 
-```bash
-# Full ImageNet, 300 epochs, two GPUs; paths are supplied by you.
-METHOD=MTAR++ CUDA_DEVICES=0,1 \
-TEACHER_CKPT=/path/to/NAR-imagenet-256-XL.pt \
-bash scripts/train_c2i.sh /path/to/imagenet256_features ./results/mtarpp_l
-
-# Reuse the same NTP-only sampler; only specify the Large backbone.
-GPT_MODEL=GPT-L CUDA_VISIBLE_DEVICES=1 bash scripts/sample_c2i.sh \
-    /path/to/1500000.pt /path/to/vq_ds16_c2i.pt 1.80 ./fid_samples/mtarpp_l 50000
-```
-
-The MTAR++ preset keeps batch 256, LR 1e-4, seed 0, bf16, compile and EMA.
-Feature-loss weights for offsets 0/1/16 are all 1.0, and TCR weight is 0.2.
-Student SD50 runs for the first 240 epochs and is disabled for the final 60;
-Teacher group dropping stays at 50% throughout. Retained Teacher target groups
-must cover all three feature targets. A terminal image token is retained as
-additional Teacher context. Supply a pretrained NAR-XL checkpoint compatible with
-`NAR_gpt.py`; model weights and ImageNet data are not distributed here.
-
-Checkpoints follow steps 1200000/1250000/1300000/1350000/1400000/1450000/1500000.
-The original full split has 5004 steps per epoch (1501200 steps total), so the
-last scheduled checkpoint is near the end rather than at the very last step.
-Common settings can be overridden with `EPOCHS`, `LR`, `GLOBAL_BATCH_SIZE`,
-`GLOBAL_SEED` and `GPT_MODEL`; changing them changes the recipe.
-
-The public MTAR++ recipe uses **power-normalized Student SD** with temperature
-0.35, as an intentional update to the historical 300-epoch run. Historical
-metrics are not presented as measurements of this updated release.
 
 | Framework | Auxiliary supervision | Efficient training | Entry point |
 |---|---|---|---|
