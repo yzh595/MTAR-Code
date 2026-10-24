@@ -81,8 +81,6 @@ Use a [LlamaGen](https://github.com/FoundationVision/LlamaGen)-compatible PyTorc
 
 The shared training requirements are in `requirements.txt` (tested with Python
 3.10, PyTorch 2.2.1+cu121 and torchvision 0.17.1+cu121).
-`python -m unittest discover -s tests -p 'test_mtarpp*.py' -v` runs the small
-CPU regression tests; it does not establish full-run convergence or FID.
 
 ## Data preparation
 
