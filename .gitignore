@@ -216,3 +216,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local experiments and model/data artifacts (never part of a source release).
+results/
+runs/
+fid_samples/
+pretrained_models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.log
+classify_image_graph_def.pb

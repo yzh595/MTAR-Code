@@ -1,0 +1,30 @@
+{
+  "recipe": "Full ImageNet, GPT-L, 300 epochs, S24-to-T36, offsets 0/1/16, TG-MFP + TCR + dual-path SD",
+  "archived_training_completed": "2026-09-13",
+  "public_release_student_sd": "power_normalized",
+  "historical_student_sd": "softmax_of_scores",
+  "sources": [
+    {
+      "public_file": "mtarpp/model.py",
+      "archived_file": "Know_dino_3_norm_mse_final_teacher_feature_groupdrop_tcr.py",
+      "archived_sha256": "f3bcac33b8318215626d7e629c4fccd12798216e5fe79dbc5d9592cb8c38a200",
+      "changes": "None; network definition and parameter names preserved."
+    },
+    {
+      "public_file": "mtarpp/teacher.py",
+      "archived_file": "nar_dino_know_3.py",
+      "archived_sha256": "b99bf1b2e463f43c6c0f6e1bdf7c759350a202e18e315f3dda1f8127cd0a0f35",
+      "changes": "Final newline normalized; pretrained teacher topology and sparse forward preserved."
+    },
+    {
+      "public_file": "mtarpp/train.py",
+      "archived_file": "train_c2i_dino_3_norm_mse_final_teacher_feature_groupdrop_tcr_scheduled_ckpt_gptl_s24.py",
+      "archived_sha256": "91b4f1e0805910b157151288f9ddc162c2708b78cfa3427889a40056768e3e1e",
+      "changes": "Public import paths; teacher checkpoint required and strictly validated; Student SD changed to power normalization at the author's request."
+    }
+  ],
+  "sampling": "Standard NTP-only LlamaGen decoder; model weights; random class labels; seed 0; per-rank batch 32; CFG configurable; temperature 1; top-k 0; top-p 1; bf16; compile.",
+  "checkpoint_policy": "Historical steps 1200000 through 1500000 every 50000 steps; training ends at 1501200 on the original full split.",
+  "excluded": ["weights", "datasets", "raw experiment logs", "server addresses", "credentials", "private absolute paths"],
+  "results_caveat": "Historical run results do not measure the power-normalized release; no new convergence/FID claim is made."
+}

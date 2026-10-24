@@ -1,6 +1,31 @@
 # Efficient Training with Foresight: Multi-Token Auxiliary Supervision for Autoregressive Image Generation [arXiv](https://arxiv.org/abs/2608.25386) 
 
-Official PyTorch implementation of **MTAR**.
+Official PyTorch implementation of **MTAR**, with the **MTAR++** full-ImageNet training code.
+
+## MTAR++ code release
+
+MTAR++ replaces discrete future-token auxiliary supervision with **Teacher-Guided
+Multi-Feature Prediction (TG-MFP)**, and combines it with TCR and dual-path semantic
+dropping. The released Large-model recipe uses a GPT-L student (layer 24), a frozen
+NAR-XL teacher (layer 36), and current/future feature targets at offsets **0, 1, 16**.
+The original MTAR entry points below are preserved.
+
+**[MTAR++ setup, data, training, sampling and evaluation →](docs/MTARPP.md)**
+
+```bash
+# Full ImageNet, 300 epochs, two GPUs; paths are supplied by you.
+CUDA_VISIBLE_DEVICES=0,1 bash train_c2i_mtarpp.sh \
+    /path/to/imagenet256_features /path/to/NAR-imagenet-256-XL.pt ./results/mtarpp_l
+```
+
+The public MTAR++ recipe uses **power-normalized Student SD** with temperature
+0.35, as an intentional update to the historical 300-epoch run. Historical
+metrics are not presented as measurements of this updated release.
+
+| Framework | Auxiliary supervision | Efficient training | Entry point |
+|---|---|---|---|
+| MTAR | Discrete future-token prediction (MTP) | Student SD | `train_c2i_mtar.sh` |
+| MTAR++ | Teacher features at offsets 0/1/16 (TG-MFP) | Student SD + target-aware Teacher group drop | `train_c2i_mtarpp.sh` |
 
 ![Overview of the MTP and token-level contrastive regularization components in MTAR](assets/mtar_overview.png)
 

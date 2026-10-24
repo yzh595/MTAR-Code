@@ -1,0 +1,6 @@
+# Install the matching CUDA PyTorch wheels first; see docs/MTARPP.md.
+torch==2.2.1
+torchvision==0.17.1
+numpy==1.26.4
+Pillow==10.4.0
+tqdm>=4.65,<5
