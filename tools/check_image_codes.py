@@ -11,11 +11,9 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.set_grad_enabled(False)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     # create and load model
-    vq_model = VQ_models[args.vq_model](
-        codebook_size=args.codebook_size,
-        codebook_embed_dim=args.codebook_embed_dim)
+    vq_model = VQ_models[args.vq_model](codebook_size=args.codebook_size, codebook_embed_dim=args.codebook_embed_dim)
     vq_model.to(device)
     vq_model.eval()
     checkpoint = torch.load(args.vq_ckpt, map_location="cpu")
@@ -26,19 +24,18 @@ def main(args):
     latent_dim = args.codebook_embed_dim
     latent_size = args.image_size // args.downsample_size
     codes = torch.from_numpy(np.load(args.code_path)).to(device)
-    if codes.ndim == 3: # flip augmentation
+    if codes.ndim == 3:  # flip augmentation
         qzshape = (codes.shape[1], latent_dim, latent_size, latent_size)
     else:
         qzshape = (1, latent_dim, latent_size, latent_size)
     index_sample = codes.reshape(-1)
-    samples = vq_model.decode_code(index_sample, qzshape) # output value is between [-1, 1]
+    samples = vq_model.decode_code(index_sample, qzshape)  # output value is between [-1, 1]
 
     # save
     out_path = "sample_image_code.png"
-    nrow = max(4, int(codes.shape[1]//2))
+    nrow = max(4, int(codes.shape[1] // 2))
     save_image(samples, out_path, nrow=nrow, normalize=True, value_range=(-1, 1))
     print("Reconstructed image is saved to {}".format(out_path))
-
 
 
 if __name__ == "__main__":

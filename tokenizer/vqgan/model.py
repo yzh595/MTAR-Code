@@ -7,47 +7,52 @@ from tokenizer.vqgan.quantize import VectorQuantizer2 as VectorQuantizer
 
 
 VQGAN_FROM_TAMING = {
-    'vqgan_imagenet_f16_1024': (
-        'tokenizer/vqgan/configs/vqgan_imagenet_f16_1024.yaml',
-        'pretrained_models/vqgan_imagenet_f16_1024/ckpts/last.pth'),
-    'vqgan_imagenet_f16_16384': (
-        'tokenizer/vqgan/configs/vqgan_imagenet_f16_16384.yaml', 
-        'pretrained_models/vqgan_imagenet_f16_16384/ckpts/last.pth'),
-    'vqgan_openimage_f8_256': (
-        'tokenizer/vqgan/configs/vqgan_openimage_f8_256.yaml', 
-        'pretrained_models/vq-f8-n256/model.pth'),
-    'vqgan_openimage_f8_16384': (
-        'tokenizer/vqgan/configs/vqgan_openimage_f8_16384.yaml',
-        'pretrained_models/vq-f8/model.pth'),
+    "vqgan_imagenet_f16_1024": (
+        "tokenizer/vqgan/configs/vqgan_imagenet_f16_1024.yaml",
+        "pretrained_models/vqgan_imagenet_f16_1024/ckpts/last.pth",
+    ),
+    "vqgan_imagenet_f16_16384": (
+        "tokenizer/vqgan/configs/vqgan_imagenet_f16_16384.yaml",
+        "pretrained_models/vqgan_imagenet_f16_16384/ckpts/last.pth",
+    ),
+    "vqgan_openimage_f8_256": (
+        "tokenizer/vqgan/configs/vqgan_openimage_f8_256.yaml",
+        "pretrained_models/vq-f8-n256/model.pth",
+    ),
+    "vqgan_openimage_f8_16384": (
+        "tokenizer/vqgan/configs/vqgan_openimage_f8_16384.yaml",
+        "pretrained_models/vq-f8/model.pth",
+    ),
 }
 
+
 class VQModel(nn.Module):
-    def __init__(self,
-                 ddconfig,
-                 n_embed,
-                 embed_dim,
-                 ckpt_path=None,
-                 ignore_keys=[],
-                 image_key="image",
-                 colorize_nlabels=None,
-                 monitor=None,
-                 remap=None,
-                 sane_index_shape=False,  # tell vector quantizer to return indices as bhw
-                 **kwargs,
-                 ):
+    def __init__(
+        self,
+        ddconfig,
+        n_embed,
+        embed_dim,
+        ckpt_path=None,
+        ignore_keys=[],
+        image_key="image",
+        colorize_nlabels=None,
+        monitor=None,
+        remap=None,
+        sane_index_shape=False,  # tell vector quantizer to return indices as bhw
+        **kwargs,
+    ):
         super().__init__()
         self.image_key = image_key
         self.encoder = Encoder(**ddconfig)
         self.decoder = Decoder(**ddconfig)
-        self.quantize = VectorQuantizer(n_embed, embed_dim, beta=0.25,
-                                        remap=remap, sane_index_shape=sane_index_shape)
+        self.quantize = VectorQuantizer(n_embed, embed_dim, beta=0.25, remap=remap, sane_index_shape=sane_index_shape)
         self.quant_conv = torch.nn.Conv2d(ddconfig["z_channels"], embed_dim, 1)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
         self.image_key = image_key
         if colorize_nlabels is not None:
-            assert type(colorize_nlabels)==int
+            assert type(colorize_nlabels) == int
             self.register_buffer("colorize", torch.randn(3, colorize_nlabels, 1, 1))
         if monitor is not None:
             self.monitor = monitor

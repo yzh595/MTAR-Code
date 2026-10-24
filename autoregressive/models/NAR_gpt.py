@@ -99,7 +99,7 @@ class CaptionEmbedder(nn.Module):
 
         self.register_buffer(
             "uncond_embedding",
-            nn.Parameter(torch.randn(token_num, in_channels) / in_channels ** 0.5),
+            nn.Parameter(torch.randn(token_num, in_channels) / in_channels**0.5),
         )
 
         self.uncond_prob = uncond_prob
@@ -154,9 +154,7 @@ class RMSNorm(torch.nn.Module):
         self.weight = nn.Parameter(torch.ones(dim))
 
     def _norm(self, x):
-        return x * torch.rsqrt(
-            torch.mean(x * x, dim=-1, keepdim=True) + self.eps
-        )
+        return x * torch.rsqrt(torch.mean(x * x, dim=-1, keepdim=True) + self.eps)
 
     def forward(self, x):
         output = self._norm(x.float()).type_as(x)
@@ -182,9 +180,7 @@ class FeedForward(nn.Module):
         self.ffn_dropout = nn.Dropout(config.ffn_dropout_p)
 
     def forward(self, x):
-        return self.ffn_dropout(
-            self.w2(F.silu(self.w1(x)) * self.w3(x))
-        )
+        return self.ffn_dropout(self.w2(F.silu(self.w1(x)) * self.w3(x)))
 
 
 class KVCache(nn.Module):
@@ -228,13 +224,9 @@ class Attention(nn.Module):
         self.dim = config.dim
         self.head_dim = config.dim // config.n_head
         self.n_head = config.n_head
-        self.n_kv_head = (
-            config.n_kv_head if config.n_kv_head is not None else config.n_head
-        )
+        self.n_kv_head = config.n_kv_head if config.n_kv_head is not None else config.n_head
 
-        total_kv_dim = (
-            self.n_head + 2 * self.n_kv_head
-        ) * self.head_dim
+        total_kv_dim = (self.n_head + 2 * self.n_kv_head) * self.head_dim
 
         self.wqkv = nn.Linear(config.dim, total_kv_dim, bias=False)
         self.wo = nn.Linear(config.dim, config.dim, bias=False)
@@ -310,15 +302,17 @@ class Attention(nn.Module):
             dropout_p=self.attn_dropout_p if self.training else 0,
         )
 
-        output = output.transpose(1, 2).contiguous().view(
-            bsz,
-            seqlen,
-            self.dim,
+        output = (
+            output.transpose(1, 2)
+            .contiguous()
+            .view(
+                bsz,
+                seqlen,
+                self.dim,
+            )
         )
 
-        output = self.resid_dropout(
-            self.wo(output)
-        )
+        output = self.resid_dropout(self.wo(output))
 
         return output
 
@@ -357,11 +351,7 @@ class TransformerBlock(nn.Module):
             )
         )
 
-        out = h + self.drop_path(
-            self.feed_forward(
-                self.ffn_norm(h)
-            )
-        )
+        out = h + self.drop_path(self.feed_forward(self.ffn_norm(h)))
 
         return out
 
@@ -445,7 +435,7 @@ class Transformer(nn.Module):
             bias=False,
         )
 
-        grid_size = int(self.block_size ** 0.5)
+        grid_size = int(self.block_size**0.5)
         assert grid_size * grid_size == self.block_size
 
         self.grid_size = grid_size
@@ -500,8 +490,8 @@ class Transformer(nn.Module):
 
         cur_token, previous_token = [], []
 
-        H = int(block_size ** 0.5)
-        W = int(block_size ** 0.5)
+        H = int(block_size**0.5)
+        W = int(block_size**0.5)
 
         for c in range(H + W - 1):
             cur_token = []
@@ -537,7 +527,7 @@ class Transformer(nn.Module):
                 dtype,
             )
 
-        grid_size = int(self.config.block_size ** 0.5)
+        grid_size = int(self.config.block_size**0.5)
         assert grid_size * grid_size == self.config.block_size
 
         proximity_mask = torch.tril(
@@ -582,10 +572,14 @@ class Transformer(nn.Module):
         return:
             [B, 1 + K, 1, head_dim//2, 2]
         """
-        cond_pos = torch.arange(
-            self.cls_token_num,
-            device=device,
-        ).unsqueeze(0).expand(B, -1)
+        cond_pos = (
+            torch.arange(
+                self.cls_token_num,
+                device=device,
+            )
+            .unsqueeze(0)
+            .expand(B, -1)
+        )
 
         img_pos = ids_keep + self.cls_token_num
 
@@ -615,7 +609,7 @@ class Transformer(nn.Module):
             cond_embeddings = self.cls_embedding(
                 cond_idx,
                 train=self.training,
-            )[:, :self.cls_token_num]
+            )[:, : self.cls_token_num]
 
             token_embeddings = self.tok_embeddings(idx)
             self.freqs_cis = self.freqs_cis.to(token_embeddings.device)
@@ -682,7 +676,7 @@ class Transformer(nn.Module):
                 if input_pos is not None:
                     freqs_cis = self.freqs_cis[input_pos]
                 else:
-                    freqs_cis = self.freqs_cis[:token_embeddings.shape[1]]
+                    freqs_cis = self.freqs_cis[: token_embeddings.shape[1]]
 
                 if mask is not None:
                     mask = mask[:, None].to(h.device)
@@ -692,7 +686,7 @@ class Transformer(nn.Module):
                 token_embeddings = self.cls_embedding(
                     cond_idx,
                     train=self.training,
-                )[:, :self.cls_token_num]
+                )[:, : self.cls_token_num]
             else:
                 token_embeddings = self.tok_embeddings(idx)
 
@@ -706,7 +700,7 @@ class Transformer(nn.Module):
             if input_pos is not None:
                 freqs_cis = self.freqs_cis[input_pos]
             else:
-                freqs_cis = self.freqs_cis[:token_embeddings.shape[1]]
+                freqs_cis = self.freqs_cis[: token_embeddings.shape[1]]
 
         medusa_h = h
 
@@ -736,8 +730,8 @@ class Transformer(nn.Module):
                 logits = (logitsR + logitsB) / 2
 
             else:
-                logitsR = logitsR[:, self.cls_token_num - 1:]
-                logitsB = logitsB[:, self.cls_token_num - 1:]
+                logitsR = logitsR[:, self.cls_token_num - 1 :]
+                logitsB = logitsB[:, self.cls_token_num - 1 :]
 
                 bsz, _, emb_size = logitsR.shape
 
@@ -776,10 +770,7 @@ class Transformer(nn.Module):
                 logits[:, 0, 0, :] = cond_logits
                 logits[:, 0, 1:, :] = logitsR[:, 0, 1:, :]
                 logits[:, 1:, 0, :] = logitsB[:, 1:, 0, :]
-                logits[:, 1:, 1:, :] = (
-                    logitsR[:, 1:, 1:, :]
-                    + logitsB[:, 1:, 1:, :]
-                ) / 2
+                logits[:, 1:, 1:, :] = (logitsR[:, 1:, 1:, :] + logitsB[:, 1:, 1:, :]) / 2
 
                 logits = logits.reshape(
                     bsz,
@@ -797,10 +788,7 @@ class Transformer(nn.Module):
             else:
                 first = logitsR[:, 0, :]
                 last = logitsB[:, -1, :]
-                middle = (
-                    logitsB[:, :-1, :]
-                    + logitsR[:, 1:, :]
-                ) / 2
+                middle = (logitsB[:, :-1, :] + logitsR[:, 1:, :]) / 2
 
                 if accept_first_last:
                     logits = torch.cat(
@@ -823,10 +811,14 @@ class Transformer(nn.Module):
                 reduction="none",
             )
 
-            valid_all = valid[:, None].repeat(
-                1,
-                targets.shape[1],
-            ).view(-1)
+            valid_all = (
+                valid[:, None]
+                .repeat(
+                    1,
+                    targets.shape[1],
+                )
+                .view(-1)
+            )
 
             loss = (loss_all * valid_all).sum() / max(
                 valid_all.sum(),
@@ -851,12 +843,7 @@ def precompute_freqs_cis(
     base: int = 10000,
     cls_token_num=120,
 ):
-    freqs = 1.0 / (
-        base ** (
-            torch.arange(0, n_elem, 2)[: (n_elem // 2)].float()
-            / n_elem
-        )
-    )
+    freqs = 1.0 / (base ** (torch.arange(0, n_elem, 2)[: (n_elem // 2)].float() / n_elem))
 
     t = torch.arange(
         seq_len,
@@ -903,12 +890,7 @@ def precompute_freqs_cis_2d(
 ):
     half_dim = n_elem // 2
 
-    freqs = 1.0 / (
-        base ** (
-            torch.arange(0, half_dim, 2)[: (half_dim // 2)].float()
-            / half_dim
-        )
-    )
+    freqs = 1.0 / (base ** (torch.arange(0, half_dim, 2)[: (half_dim // 2)].float() / half_dim))
 
     t = torch.arange(
         grid_size,
@@ -992,11 +974,8 @@ def apply_rotary_emb(
 
     x_out2 = torch.stack(
         [
-            xshaped[..., 0] * freqs_cis[..., 0]
-            - xshaped[..., 1] * freqs_cis[..., 1],
-
-            xshaped[..., 1] * freqs_cis[..., 0]
-            + xshaped[..., 0] * freqs_cis[..., 1],
+            xshaped[..., 0] * freqs_cis[..., 0] - xshaped[..., 1] * freqs_cis[..., 1],
+            xshaped[..., 1] * freqs_cis[..., 0] + xshaped[..., 0] * freqs_cis[..., 1],
         ],
         dim=-1,
     )

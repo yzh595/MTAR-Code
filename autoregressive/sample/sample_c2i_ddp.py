@@ -1,4 +1,5 @@
 import torch
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 import torch.nn.functional as F
@@ -24,15 +25,17 @@ def load_ntp_weights(model, model_weight):
         print("Mapped checkpoint output_t1.weight -> NTP output.weight")
     target_state = model.state_dict()
     compatible_weight = {
-        key: value for key, value in model_weight.items()
+        key: value
+        for key, value in model_weight.items()
         if key in target_state and value.shape == target_state[key].shape
     }
     missing = sorted(set(target_state) - set(compatible_weight))
     if missing:
-        raise RuntimeError("Checkpoint is missing required NTP inference parameters: "
-                           + ", ".join(missing))
-    print(f"Loaded all {len(compatible_weight)} NTP tensors; "
-          f"ignored {len(set(model_weight) - set(compatible_weight))} auxiliary tensors.")
+        raise RuntimeError("Checkpoint is missing required NTP inference parameters: " + ", ".join(missing))
+    print(
+        f"Loaded all {len(compatible_weight)} NTP tensors; "
+        f"ignored {len(set(model_weight) - set(compatible_weight))} auxiliary tensors."
+    )
     model.load_state_dict(compatible_weight, strict=True)
 
 
@@ -65,20 +68,18 @@ def main(args):
     torch.cuda.set_device(device)
     print(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
-    vq_model = VQ_models[args.vq_model](
-        codebook_size=args.codebook_size,
-        codebook_embed_dim=args.codebook_embed_dim)
+    vq_model = VQ_models[args.vq_model](codebook_size=args.codebook_size, codebook_embed_dim=args.codebook_embed_dim)
     vq_model.to(device)
     vq_model.eval()
     checkpoint = torch.load(args.vq_ckpt, map_location="cpu")
     vq_model.load_state_dict(checkpoint["model"])
     del checkpoint
 
-    precision = {'none': torch.float32, 'bf16': torch.bfloat16, 'fp16': torch.float16}[args.precision]
+    precision = {"none": torch.float32, "bf16": torch.bfloat16, "fp16": torch.float16}[args.precision]
     latent_size = args.image_size // args.downsample_size
     gpt_model = GPT_models[args.gpt_model](
         vocab_size=args.codebook_size,
-        block_size=latent_size ** 2,
+        block_size=latent_size**2,
         num_classes=args.num_classes,
         cls_token_num=args.cls_token_num,
         model_type=args.gpt_type,
@@ -100,22 +101,20 @@ def main(args):
 
     if args.compile:
         print(f"compiling the model...")
-        gpt_model = torch.compile(
-            gpt_model,
-            mode="reduce-overhead",
-            fullgraph=True
-        )
+        gpt_model = torch.compile(gpt_model, mode="reduce-overhead", fullgraph=True)
     else:
-        print(f"no model compile") 
+        print(f"no model compile")
 
     model_string_name = args.gpt_model.replace("/", "-")
     if args.from_fsdp:
-        ckpt_string_name = args.gpt_ckpt.split('/')[-2]
+        ckpt_string_name = args.gpt_ckpt.split("/")[-2]
     else:
         ckpt_string_name = os.path.basename(args.gpt_ckpt).replace(".pth", "").replace(".pt", "")
-    folder_name = f"{model_string_name}-{ckpt_string_name}-size-{args.image_size}-size-{args.image_size_eval}-{args.vq_model}-" \
-                  f"topk-{args.top_k}-topp-{args.top_p}-temperature-{args.temperature}-" \
-                  f"cfg-{args.cfg_scale}-seed-{args.global_seed}"
+    folder_name = (
+        f"{model_string_name}-{ckpt_string_name}-size-{args.image_size}-size-{args.image_size_eval}-{args.vq_model}-"
+        f"topk-{args.top_k}-topp-{args.top_p}-temperature-{args.temperature}-"
+        f"cfg-{args.cfg_scale}-seed-{args.global_seed}"
+    )
     sample_folder_dir = f"{args.sample_dir}/{folder_name}"
     if rank == 0:
         os.makedirs(sample_folder_dir, exist_ok=True)
@@ -139,17 +138,22 @@ def main(args):
         qzshape = [len(c_indices), args.codebook_embed_dim, latent_size, latent_size]
 
         index_sample = generate(
-            gpt_model, c_indices, latent_size ** 2,
-            cfg_scale=args.cfg_scale, cfg_interval=args.cfg_interval,
-            temperature=args.temperature, top_k=args.top_k,
-            top_p=args.top_p, sample_logits=True, 
-            )
-        
+            gpt_model,
+            c_indices,
+            latent_size**2,
+            cfg_scale=args.cfg_scale,
+            cfg_interval=args.cfg_interval,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            top_p=args.top_p,
+            sample_logits=True,
+        )
+
         samples = vq_model.decode_code(index_sample, qzshape)
         if args.image_size_eval != args.image_size:
-            samples = F.interpolate(samples, size=(args.image_size_eval, args.image_size_eval), mode='bicubic')
+            samples = F.interpolate(samples, size=(args.image_size_eval, args.image_size_eval), mode="bicubic")
         samples = torch.clamp(127.5 * samples + 128.0, 0, 255).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
-        
+
         for i, sample in enumerate(samples):
             index = i * dist.get_world_size() + rank + total
             Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
@@ -163,16 +167,17 @@ def main(args):
     dist.destroy_process_group()
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpt-model", type=str, choices=list(GPT_models.keys()), default="GPT-B")
     parser.add_argument("--gpt-ckpt", type=str, default=None)
-    parser.add_argument("--gpt-type", type=str, choices=['c2i', 't2i'], default="c2i", help="class-conditional or text-conditional")
-    parser.add_argument("--from-fsdp", action='store_true')
+    parser.add_argument(
+        "--gpt-type", type=str, choices=["c2i", "t2i"], default="c2i", help="class-conditional or text-conditional"
+    )
+    parser.add_argument("--from-fsdp", action="store_true")
     parser.add_argument("--cls-token-num", type=int, default=1, help="max token number of condition input")
-    parser.add_argument("--precision", type=str, default='bf16', choices=["none", "fp16", "bf16"]) 
-    parser.add_argument("--compile", action='store_true', default=True)
+    parser.add_argument("--precision", type=str, default="bf16", choices=["none", "fp16", "bf16"])
+    parser.add_argument("--compile", action="store_true", default=True)
     parser.add_argument("--vq-model", type=str, choices=list(VQ_models.keys()), default="VQ-16")
     parser.add_argument("--vq-ckpt", type=str, default=None, help="ckpt path for vq model")
     parser.add_argument("--codebook-size", type=int, default=16384, help="codebook size for vector quantization")
@@ -181,13 +186,13 @@ if __name__ == "__main__":
     parser.add_argument("--image-size-eval", type=int, choices=[256, 384, 512], default=256)
     parser.add_argument("--downsample-size", type=int, choices=[8, 16], default=16)
     parser.add_argument("--num-classes", type=int, default=1000)
-    parser.add_argument("--cfg-scale",  type=float, default=1.5)
+    parser.add_argument("--cfg-scale", type=float, default=1.5)
     parser.add_argument("--cfg-interval", type=float, default=-1)
     parser.add_argument("--sample-dir", type=str, default="samples")
     parser.add_argument("--per-proc-batch-size", type=int, default=32)
     parser.add_argument("--num-fid-samples", type=int, default=50000)
     parser.add_argument("--global-seed", type=int, default=0)
-    parser.add_argument("--top-k", type=int, default=0,help="top-k value to sample with")
+    parser.add_argument("--top-k", type=int, default=0, help="top-k value to sample with")
     parser.add_argument("--temperature", type=float, default=1.0, help="temperature value to sample with")
     parser.add_argument("--top-p", type=float, default=1.0, help="top-p value to sample with")
     args = parser.parse_args()

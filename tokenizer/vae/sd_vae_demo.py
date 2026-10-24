@@ -17,18 +17,18 @@ def main(args):
 
     # load image
     img_path = args.image_path
-    out_path = args.image_path.replace('.jpg', '_vae.jpg').replace('.jpeg', '_vae.jpeg').replace('.png', '_vae.png')
+    out_path = args.image_path.replace(".jpg", "_vae.jpg").replace(".jpeg", "_vae.jpeg").replace(".png", "_vae.png")
     input_size = args.image_size
     img = Image.open(img_path).convert("RGB")
 
     # preprocess
     size_org = img.size
     img = img.resize((input_size, input_size))
-    img = np.array(img) / 255.
-    x = 2.0 * img - 1.0 # x value is between [-1, 1]
+    img = np.array(img) / 255.0
+    x = 2.0 * img - 1.0  # x value is between [-1, 1]
     x = torch.tensor(x)
     x = x.unsqueeze(dim=0)
-    x = torch.einsum('nhwc->nchw', x)
+    x = torch.einsum("nhwc->nchw", x)
     x_input = x.float().to("cuda")
 
     # inference
@@ -36,13 +36,13 @@ def main(args):
         # Map input images to latent space + normalize latents:
         latent = vae.encode(x_input).latent_dist.sample().mul_(0.18215)
         # reconstruct:
-        output = vae.decode(latent / 0.18215).sample # output value is between [-1, 1]
+        output = vae.decode(latent / 0.18215).sample  # output value is between [-1, 1]
 
     # postprocess
-    output = F.interpolate(output, size=[size_org[1], size_org[0]], mode='bilinear').permute(0, 2, 3, 1)[0]
+    output = F.interpolate(output, size=[size_org[1], size_org[0]], mode="bilinear").permute(0, 2, 3, 1)[0]
     sample = torch.clamp(127.5 * output + 128.0, 0, 255).to("cpu", dtype=torch.uint8).numpy()
 
-    # save        
+    # save
     Image.fromarray(sample).save(out_path)
     print("Reconstructed image is saved to {}".format(out_path))
 

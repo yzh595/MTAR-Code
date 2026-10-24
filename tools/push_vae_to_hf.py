@@ -14,15 +14,14 @@ model2ckpt = {
     "GPT-B": ("vq_ds16_c2i.pt", "c2i_B_256.pt", 256),
 }
 
+
 def load_model(args):
     ckpt_folder = "./"
     vq_ckpt, gpt_ckpt, _ = model2ckpt[args.gpt_model]
     hf_hub_download(repo_id="FoundationVision/LlamaGen", filename=vq_ckpt, local_dir=ckpt_folder)
     hf_hub_download(repo_id="FoundationVision/LlamaGen", filename=gpt_ckpt, local_dir=ckpt_folder)
     # create and load model
-    vq_model = VQ_models_HF[args.vq_model](
-        codebook_size=args.codebook_size,
-        codebook_embed_dim=args.codebook_embed_dim)
+    vq_model = VQ_models_HF[args.vq_model](codebook_size=args.codebook_size, codebook_embed_dim=args.codebook_embed_dim)
     vq_model.eval()
     checkpoint = torch.load(f"{ckpt_folder}{vq_ckpt}", map_location="cpu")
     vq_model.load_state_dict(checkpoint["model"])

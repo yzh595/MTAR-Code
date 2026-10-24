@@ -10,10 +10,9 @@ from tokenizer.tokenizer_image.discriminator_patchgan import NLayerDiscriminator
 from tokenizer.tokenizer_image.discriminator_stylegan import Discriminator as StyleGANDiscriminator
 
 
-
 def hinge_d_loss(logits_real, logits_fake):
-    loss_real = torch.mean(F.relu(1. - logits_real))
-    loss_fake = torch.mean(F.relu(1. + logits_fake))
+    loss_real = torch.mean(F.relu(1.0 - logits_real))
+    loss_fake = torch.mean(F.relu(1.0 + logits_fake))
     d_loss = 0.5 * (loss_real + loss_fake)
     return d_loss
 
@@ -26,7 +25,7 @@ def vanilla_d_loss(logits_real, logits_fake):
 
 
 def non_saturating_d_loss(logits_real, logits_fake):
-    loss_real = torch.mean(F.binary_cross_entropy_with_logits(torch.ones_like(logits_real),  logits_real))
+    loss_real = torch.mean(F.binary_cross_entropy_with_logits(torch.ones_like(logits_real), logits_real))
     loss_fake = torch.mean(F.binary_cross_entropy_with_logits(torch.zeros_like(logits_fake), logits_fake))
     d_loss = 0.5 * (loss_real + loss_fake)
     return d_loss
@@ -37,20 +36,32 @@ def hinge_gen_loss(logit_fake):
 
 
 def non_saturating_gen_loss(logit_fake):
-    return torch.mean(F.binary_cross_entropy_with_logits(torch.ones_like(logit_fake),  logit_fake))
+    return torch.mean(F.binary_cross_entropy_with_logits(torch.ones_like(logit_fake), logit_fake))
 
 
-def adopt_weight(weight, global_step, threshold=0, value=0.):
+def adopt_weight(weight, global_step, threshold=0, value=0.0):
     if global_step < threshold:
         weight = value
     return weight
 
 
 class VQLoss(nn.Module):
-    def __init__(self, disc_start, disc_loss="hinge", disc_dim=64, disc_type='patchgan', image_size=256,
-                 disc_num_layers=3, disc_in_channels=3, disc_weight=1.0, disc_adaptive_weight = False,
-                 gen_adv_loss='hinge', reconstruction_loss='l2', reconstruction_weight=1.0, 
-                 codebook_weight=1.0, perceptual_weight=1.0, 
+    def __init__(
+        self,
+        disc_start,
+        disc_loss="hinge",
+        disc_dim=64,
+        disc_type="patchgan",
+        image_size=256,
+        disc_num_layers=3,
+        disc_in_channels=3,
+        disc_weight=1.0,
+        disc_adaptive_weight=False,
+        gen_adv_loss="hinge",
+        reconstruction_loss="l2",
+        reconstruction_weight=1.0,
+        codebook_weight=1.0,
+        perceptual_weight=1.0,
     ):
         super().__init__()
         # discriminator loss
@@ -58,13 +69,13 @@ class VQLoss(nn.Module):
         assert disc_loss in ["hinge", "vanilla", "non-saturating"]
         if disc_type == "patchgan":
             self.discriminator = PatchGANDiscriminator(
-                input_nc=disc_in_channels, 
+                input_nc=disc_in_channels,
                 n_layers=disc_num_layers,
                 ndf=disc_dim,
             )
         elif disc_type == "stylegan":
             self.discriminator = StyleGANDiscriminator(
-                input_nc=disc_in_channels, 
+                input_nc=disc_in_channels,
                 image_size=image_size,
             )
         else:
@@ -114,8 +125,17 @@ class VQLoss(nn.Module):
         d_weight = torch.clamp(d_weight, 0.0, 1e4).detach()
         return d_weight.detach()
 
-    def forward(self, codebook_loss, inputs, reconstructions, optimizer_idx, global_step, last_layer=None, 
-                logger=None, log_every=100):
+    def forward(
+        self,
+        codebook_loss,
+        inputs,
+        reconstructions,
+        optimizer_idx,
+        global_step,
+        last_layer=None,
+        logger=None,
+        log_every=100,
+    ):
         # generator update
         if optimizer_idx == 0:
             # reconstruction loss
@@ -128,27 +148,35 @@ class VQLoss(nn.Module):
             # discriminator loss
             logits_fake = self.discriminator(reconstructions.contiguous())
             generator_adv_loss = self.gen_adv_loss(logits_fake)
-            
+
             if self.disc_adaptive_weight:
                 null_loss = self.rec_weight * rec_loss + self.perceptual_weight * p_loss
-                disc_adaptive_weight = self.calculate_adaptive_weight(null_loss, generator_adv_loss, last_layer=last_layer)
+                disc_adaptive_weight = self.calculate_adaptive_weight(
+                    null_loss, generator_adv_loss, last_layer=last_layer
+                )
             else:
                 disc_adaptive_weight = 1
             disc_weight = adopt_weight(self.disc_weight, global_step, threshold=self.discriminator_iter_start)
-            
-            loss = self.rec_weight * rec_loss + \
-                self.perceptual_weight * p_loss + \
-                disc_adaptive_weight * disc_weight * generator_adv_loss + \
-                codebook_loss[0] + codebook_loss[1] + codebook_loss[2]
-            
+
+            loss = (
+                self.rec_weight * rec_loss
+                + self.perceptual_weight * p_loss
+                + disc_adaptive_weight * disc_weight * generator_adv_loss
+                + codebook_loss[0]
+                + codebook_loss[1]
+                + codebook_loss[2]
+            )
+
             if global_step % log_every == 0:
                 rec_loss = self.rec_weight * rec_loss
                 p_loss = self.perceptual_weight * p_loss
                 generator_adv_loss = disc_adaptive_weight * disc_weight * generator_adv_loss
-                logger.info(f"(Generator) rec_loss: {rec_loss:.4f}, perceptual_loss: {p_loss:.4f}, "
-                            f"vq_loss: {codebook_loss[0]:.4f}, commit_loss: {codebook_loss[1]:.4f}, entropy_loss: {codebook_loss[2]:.4f}, "
-                            f"codebook_usage: {codebook_loss[3]:.4f}, generator_adv_loss: {generator_adv_loss:.4f}, "
-                            f"disc_adaptive_weight: {disc_adaptive_weight:.4f}, disc_weight: {disc_weight:.4f}")
+                logger.info(
+                    f"(Generator) rec_loss: {rec_loss:.4f}, perceptual_loss: {p_loss:.4f}, "
+                    f"vq_loss: {codebook_loss[0]:.4f}, commit_loss: {codebook_loss[1]:.4f}, entropy_loss: {codebook_loss[2]:.4f}, "
+                    f"codebook_usage: {codebook_loss[3]:.4f}, generator_adv_loss: {generator_adv_loss:.4f}, "
+                    f"disc_adaptive_weight: {disc_adaptive_weight:.4f}, disc_weight: {disc_weight:.4f}"
+                )
             return loss
 
         # discriminator update
@@ -158,11 +186,13 @@ class VQLoss(nn.Module):
 
             disc_weight = adopt_weight(self.disc_weight, global_step, threshold=self.discriminator_iter_start)
             d_adversarial_loss = disc_weight * self.disc_loss(logits_real, logits_fake)
-            
+
             if global_step % log_every == 0:
                 logits_real = logits_real.detach().mean()
                 logits_fake = logits_fake.detach().mean()
-                logger.info(f"(Discriminator) " 
-                            f"discriminator_adv_loss: {d_adversarial_loss:.4f}, disc_weight: {disc_weight:.4f}, "
-                            f"logits_real: {logits_real:.4f}, logits_fake: {logits_fake:.4f}")
+                logger.info(
+                    f"(Discriminator) "
+                    f"discriminator_adv_loss: {d_adversarial_loss:.4f}, disc_weight: {disc_weight:.4f}, "
+                    f"logits_real: {logits_real:.4f}, logits_fake: {logits_fake:.4f}"
+                )
             return d_adversarial_loss

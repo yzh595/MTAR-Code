@@ -17,7 +17,9 @@ import tensorflow.compat.v1 as tf
 from scipy import linalg
 from tqdm.auto import tqdm
 
-INCEPTION_V3_URL = "https://openaipublic.blob.core.windows.net/diffusion/jul-2021/ref_batches/classify_image_graph_def.pb"
+INCEPTION_V3_URL = (
+    "https://openaipublic.blob.core.windows.net/diffusion/jul-2021/ref_batches/classify_image_graph_def.pb"
+)
 INCEPTION_V3_PATH = "classify_image_graph_def.pb"
 
 FID_POOL_NAME = "pool_3:0"
@@ -30,9 +32,7 @@ def main():
     parser.add_argument("sample_batch", help="path to sample batch npz file")
     args = parser.parse_args()
 
-    config = tf.ConfigProto(
-        allow_soft_placement=True  # allows DecodeJpeg to run on CPU in Inception graph
-    )
+    config = tf.ConfigProto(allow_soft_placement=True)  # allows DecodeJpeg to run on CPU in Inception graph
     config.gpu_options.allow_growth = True
     evaluator = Evaluator(tf.Session(config=config))
 
@@ -62,9 +62,9 @@ def main():
     print("Precision:", prec)
     print("Recall:", recall)
 
-    txt_path = args.sample_batch.replace('.npz', '.txt')
+    txt_path = args.sample_batch.replace(".npz", ".txt")
     print("writing to {}".format(txt_path))
-    with open(txt_path, 'w') as f:
+    with open(txt_path, "w") as f:
         print("Inception Score:", IS, file=f)
         print("FID:", FID, file=f)
         print("sFID:", sFID, file=f)
@@ -107,10 +107,7 @@ class FIDStatistics:
         # product might be almost singular
         covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
         if not np.isfinite(covmean).all():
-            msg = (
-                "fid calculation produces singular product; adding %s to diagonal of cov estimates"
-                % eps
-            )
+            msg = "fid calculation produces singular product; adding %s to diagonal of cov estimates" % eps
             warnings.warn(msg)
             offset = np.eye(sigma1.shape[0]) * eps
             covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
@@ -163,9 +160,7 @@ class Evaluator:
         spatial_preds = []
         for batch in tqdm(batches):
             batch = batch.astype(np.float32)
-            pred, spatial_pred = self.sess.run(
-                [self.pool_features, self.spatial_features], {self.image_input: batch}
-            )
+            pred, spatial_pred = self.sess.run([self.pool_features, self.spatial_features], {self.image_input: batch})
             preds.append(pred.reshape([pred.shape[0], -1]))
             spatial_preds.append(spatial_pred.reshape([spatial_pred.shape[0], -1]))
         return (
@@ -178,9 +173,7 @@ class Evaluator:
     ) -> Tuple[FIDStatistics, FIDStatistics]:
         obj = np.load(npz_path)
         if "mu" in list(obj.keys()):
-            return FIDStatistics(obj["mu"], obj["sigma"]), FIDStatistics(
-                obj["mu_s"], obj["sigma_s"]
-            )
+            return FIDStatistics(obj["mu"], obj["sigma"]), FIDStatistics(obj["mu_s"], obj["sigma_s"])
         return tuple(self.compute_statistics(x) for x in activations)
 
     def compute_statistics(self, activations: np.ndarray) -> FIDStatistics:
@@ -203,14 +196,10 @@ class Evaluator:
             scores.append(np.exp(kl))
         return float(np.mean(scores))
 
-    def compute_prec_recall(
-        self, activations_ref: np.ndarray, activations_sample: np.ndarray
-    ) -> Tuple[float, float]:
+    def compute_prec_recall(self, activations_ref: np.ndarray, activations_sample: np.ndarray) -> Tuple[float, float]:
         radii_1 = self.manifold_estimator.manifold_radii(activations_ref)
         radii_2 = self.manifold_estimator.manifold_radii(activations_sample)
-        pr = self.manifold_estimator.evaluate_pr(
-            activations_ref, radii_1, activations_sample, radii_2
-        )
+        pr = self.manifold_estimator.evaluate_pr(activations_ref, radii_1, activations_sample, radii_2)
         return (float(pr[0][0]), float(pr[1][0]))
 
 
@@ -274,16 +263,13 @@ class ManifoldEstimator:
                 col_batch = features[begin2:end2]
 
                 # Compute distances between batches.
-                distance_batch[
-                    0 : end1 - begin1, begin2:end2
-                ] = self.distance_block.pairwise_distances(row_batch, col_batch)
+                distance_batch[0 : end1 - begin1, begin2:end2] = self.distance_block.pairwise_distances(
+                    row_batch, col_batch
+                )
 
             # Find the k-nearest neighbor from the current batch.
             radii[begin1:end1, :] = np.concatenate(
-                [
-                    x[:, self.nhood_sizes]
-                    for x in _numpy_partition(distance_batch[0 : end1 - begin1, :], seq, axis=1)
-                ],
+                [x[:, self.nhood_sizes] for x in _numpy_partition(distance_batch[0 : end1 - begin1, :], seq, axis=1)],
                 axis=0,
             )
 
@@ -311,9 +297,9 @@ class ManifoldEstimator:
                 end2 = min(begin2 + self.col_batch_size, num_ref_images)
                 ref_batch = features[begin2:end2]
 
-                distance_batch[
-                    0 : end1 - begin1, begin2:end2
-                ] = self.distance_block.pairwise_distances(feature_batch, ref_batch)
+                distance_batch[0 : end1 - begin1, begin2:end2] = self.distance_block.pairwise_distances(
+                    feature_batch, ref_batch
+                )
 
             # From the minibatch of new feature vectors, determine if they are in the estimated manifold.
             # If a feature vector is inside a hypersphere of some reference sample, then
@@ -618,9 +604,7 @@ def _create_softmax_graph(input_batch):
     with open(INCEPTION_V3_PATH, "rb") as f:
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
-    (matmul,) = tf.import_graph_def(
-        graph_def, return_elements=[f"softmax/logits/MatMul"], name=prefix
-    )
+    (matmul,) = tf.import_graph_def(graph_def, return_elements=[f"softmax/logits/MatMul"], name=prefix)
     w = matmul.inputs[1]
     logits = tf.matmul(input_batch, w)
     return tf.nn.softmax(logits)

@@ -1,4 +1,5 @@
 import torch
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 import torch.distributed as dist
@@ -24,15 +25,18 @@ class SingleFolderDataset(Dataset):
         super().__init__()
         self.directory = directory
         self.transform = transform
-        self.image_paths = [os.path.join(directory, file_name) for file_name in os.listdir(directory)
-                            if os.path.isfile(os.path.join(directory, file_name))]
+        self.image_paths = [
+            os.path.join(directory, file_name)
+            for file_name in os.listdir(directory)
+            if os.path.isfile(os.path.join(directory, file_name))
+        ]
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
         image_path = self.image_paths[idx]
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path).convert("RGB")
         if self.transform:
             image = self.transform(image)
         return image, torch.tensor(0)
@@ -48,7 +52,7 @@ def create_npz_from_sample_folder(sample_dir, num=50_000):
         sample_np = np.asarray(sample_pil).astype(np.uint8)
         samples.append(sample_np)
 
-    random.shuffle(samples) # This is very important for IS(Inception Score) !!!
+    random.shuffle(samples)  # This is very important for IS(Inception Score) !!!
     samples = np.stack(samples)
     assert samples.shape == (num, samples.shape[1], samples.shape[2], 3)
     npz_path = f"{sample_dir}.npz"
@@ -63,19 +67,15 @@ def center_crop_arr(pil_image, image_size):
     https://github.com/openai/guided-diffusion/blob/8fb3ad9197f16bbc40620447b2742e13458d2831/guided_diffusion/image_datasets.py#L126
     """
     while min(*pil_image.size) >= 2 * image_size:
-        pil_image = pil_image.resize(
-            tuple(x // 2 for x in pil_image.size), resample=Image.BOX
-        )
+        pil_image = pil_image.resize(tuple(x // 2 for x in pil_image.size), resample=Image.BOX)
 
     scale = image_size / min(*pil_image.size)
-    pil_image = pil_image.resize(
-        tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
-    )
+    pil_image = pil_image.resize(tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC)
 
     arr = np.array(pil_image)
     crop_y = (arr.shape[0] - image_size) // 2
     crop_x = (arr.shape[1] - image_size) // 2
-    return Image.fromarray(arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size])
+    return Image.fromarray(arr[crop_y : crop_y + image_size, crop_x : crop_x + image_size])
 
 
 def main(args):
@@ -93,7 +93,9 @@ def main(args):
     print(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
     # create and load model
-    vae = ConsistencyDecoderVAE.from_pretrained("openai/consistency-decoder", torch_dtype=torch.float16).to("cuda:{}".format(device))
+    vae = ConsistencyDecoderVAE.from_pretrained("openai/consistency-decoder", torch_dtype=torch.float16).to(
+        "cuda:{}".format(device)
+    )
 
     # Create folder to save samples:
     folder_name = f"openai-consistencydecoder-{args.dataset}-size-{args.image_size}-seed-{args.global_seed}"
@@ -104,25 +106,23 @@ def main(args):
     dist.barrier()
 
     # Setup data:
-    transform = transforms.Compose([
-        transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.image_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True)
-    ])
-    if args.dataset == 'imagenet':
+    transform = transforms.Compose(
+        [
+            transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+        ]
+    )
+    if args.dataset == "imagenet":
         dataset = ImageFolder(args.data_path, transform=transform)
         num_fid_samples = 50000
-    elif args.dataset == 'coco':
+    elif args.dataset == "coco":
         dataset = SingleFolderDataset(args.data_path, transform=transform)
         num_fid_samples = 5000
     else:
         raise Exception("please check dataset")
     sampler = DistributedSampler(
-        dataset,
-        num_replicas=dist.get_world_size(),
-        rank=rank,
-        shuffle=False,
-        seed=args.global_seed
+        dataset, num_replicas=dist.get_world_size(), rank=rank, shuffle=False, seed=args.global_seed
     )
     loader = DataLoader(
         dataset,
@@ -131,8 +131,8 @@ def main(args):
         sampler=sampler,
         num_workers=args.num_workers,
         pin_memory=True,
-        drop_last=False
-    )    
+        drop_last=False,
+    )
 
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
     n = args.per_proc_batch_size
@@ -144,21 +144,21 @@ def main(args):
     total = 0
     for x, _ in loader:
         rgb_gts = x
-        rgb_gts = (rgb_gts.permute(0, 2, 3, 1).to("cpu").numpy() + 1.0) / 2.0 # rgb_gt value is between [0, 1]
+        rgb_gts = (rgb_gts.permute(0, 2, 3, 1).to("cpu").numpy() + 1.0) / 2.0  # rgb_gt value is between [0, 1]
         x = x.half().to("cuda:{}".format(device))
         with torch.no_grad():
             # Map input images to latent space + normalize latents:
             latent = vae.encode(x).latent_dist.sample().mul_(0.18215)
             # reconstruct:
-            samples = vae.decode(latent / 0.18215).sample # output value is between [-1, 1]
+            samples = vae.decode(latent / 0.18215).sample  # output value is between [-1, 1]
         samples = torch.clamp(127.5 * samples + 128.0, 0, 255).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
-        
+
         # Save samples to disk as individual .png files
         for i, (sample, rgb_gt) in enumerate(zip(samples, rgb_gts)):
             index = i * dist.get_world_size() + rank + total
             Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
             # metric
-            rgb_restored = sample.astype(np.float32) / 255. # rgb_restored value is between [0, 1]
+            rgb_restored = sample.astype(np.float32) / 255.0  # rgb_restored value is between [0, 1]
             psnr = psnr_loss(rgb_restored, rgb_gt)
             ssim = ssim_loss(rgb_restored, rgb_gt, multichannel=True, data_range=2.0, channel_axis=-1)
             psnr_val_rgb.append(psnr)
@@ -178,19 +178,19 @@ def main(args):
 
     if rank == 0:
         gather_psnr_val = list(itertools.chain(*gather_psnr_val))
-        gather_ssim_val = list(itertools.chain(*gather_ssim_val))        
+        gather_ssim_val = list(itertools.chain(*gather_ssim_val))
         psnr_val_rgb = sum(gather_psnr_val) / len(gather_psnr_val)
         ssim_val_rgb = sum(gather_ssim_val) / len(gather_ssim_val)
         print("PSNR: %f, SSIM: %f " % (psnr_val_rgb, ssim_val_rgb))
 
         result_file = f"{sample_folder_dir}_results.txt"
         print("writing results to {}".format(result_file))
-        with open(result_file, 'w') as f:
+        with open(result_file, "w") as f:
             print("PSNR: %f, SSIM: %f " % (psnr_val_rgb, ssim_val_rgb), file=f)
 
         create_npz_from_sample_folder(sample_folder_dir, num_fid_samples)
         print("Done.")
-    
+
     dist.barrier()
     dist.destroy_process_group()
 
@@ -198,7 +198,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, required=True)
-    parser.add_argument("--dataset", type=str, choices=['imagenet', 'coco'], default='imagenet')
+    parser.add_argument("--dataset", type=str, choices=["imagenet", "coco"], default="imagenet")
     parser.add_argument("--image-size", type=int, choices=[256, 512], default=256)
     parser.add_argument("--sample-dir", type=str, default="reconstructions")
     parser.add_argument("--per-proc-batch-size", type=int, default=32)

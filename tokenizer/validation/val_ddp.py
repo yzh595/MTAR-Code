@@ -1,4 +1,5 @@
 import torch
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 import torch.distributed as dist
@@ -19,15 +20,18 @@ class SingleFolderDataset(Dataset):
         super().__init__()
         self.directory = directory
         self.transform = transform
-        self.image_paths = [os.path.join(directory, file_name) for file_name in os.listdir(directory)
-                            if os.path.isfile(os.path.join(directory, file_name))]
+        self.image_paths = [
+            os.path.join(directory, file_name)
+            for file_name in os.listdir(directory)
+            if os.path.isfile(os.path.join(directory, file_name))
+        ]
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
         image_path = self.image_paths[idx]
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path).convert("RGB")
         if self.transform:
             image = self.transform(image)
         return image, torch.tensor(0)
@@ -43,7 +47,7 @@ def create_npz_from_sample_folder(sample_dir, num=50_000):
         sample_np = np.asarray(sample_pil).astype(np.uint8)
         samples.append(sample_np)
 
-    random.shuffle(samples) # This is very important for IS(Inception Score) !!!
+    random.shuffle(samples)  # This is very important for IS(Inception Score) !!!
     samples = np.stack(samples)
     assert samples.shape == (num, samples.shape[1], samples.shape[2], 3)
     npz_path = f"{sample_dir}.npz"
@@ -58,19 +62,15 @@ def center_crop_arr(pil_image, image_size):
     https://github.com/openai/guided-diffusion/blob/8fb3ad9197f16bbc40620447b2742e13458d2831/guided_diffusion/image_datasets.py#L126
     """
     while min(*pil_image.size) >= 2 * image_size:
-        pil_image = pil_image.resize(
-            tuple(x // 2 for x in pil_image.size), resample=Image.BOX
-        )
+        pil_image = pil_image.resize(tuple(x // 2 for x in pil_image.size), resample=Image.BOX)
 
     scale = image_size / min(*pil_image.size)
-    pil_image = pil_image.resize(
-        tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
-    )
+    pil_image = pil_image.resize(tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC)
 
     arr = np.array(pil_image)
     crop_y = (arr.shape[0] - image_size) // 2
     crop_x = (arr.shape[1] - image_size) // 2
-    return Image.fromarray(arr[crop_y: crop_y + image_size, crop_x: crop_x + image_size])
+    return Image.fromarray(arr[crop_y : crop_y + image_size, crop_x : crop_x + image_size])
 
 
 def main(args):
@@ -96,27 +96,25 @@ def main(args):
     dist.barrier()
 
     # Setup data:
-    transform = transforms.Compose([
-        transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.image_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True)
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+        ]
+    )
 
-    if args.dataset == 'imagenet':
+    if args.dataset == "imagenet":
         dataset = ImageFolder(args.data_path, transform=transform)
         num_fid_samples = 50000
-    elif args.dataset == 'coco':
+    elif args.dataset == "coco":
         dataset = SingleFolderDataset(args.data_path, transform=transform)
         num_fid_samples = 5000
     else:
         raise Exception("please check dataset")
-    
+
     sampler = DistributedSampler(
-        dataset,
-        num_replicas=dist.get_world_size(),
-        rank=rank,
-        shuffle=False,
-        seed=args.global_seed
+        dataset, num_replicas=dist.get_world_size(), rank=rank, shuffle=False, seed=args.global_seed
     )
     loader = DataLoader(
         dataset,
@@ -125,8 +123,8 @@ def main(args):
         sampler=sampler,
         num_workers=args.num_workers,
         pin_memory=True,
-        drop_last=False
-    )    
+        drop_last=False,
+    )
 
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
     n = args.per_proc_batch_size
@@ -155,7 +153,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, required=True)
-    parser.add_argument("--dataset", type=str, choices=['imagenet', 'coco'], default='imagenet')
+    parser.add_argument("--dataset", type=str, choices=["imagenet", "coco"], default="imagenet")
     parser.add_argument("--image-size", type=int, choices=[256, 512], default=256)
     parser.add_argument("--sample-dir", type=str, default="reconstructions")
     parser.add_argument("--per-proc-batch-size", type=int, default=32)

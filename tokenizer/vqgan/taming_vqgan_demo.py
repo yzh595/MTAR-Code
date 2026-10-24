@@ -19,7 +19,7 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.set_grad_enabled(False)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     # create and load model
     cfg, ckpt = VQGAN_FROM_TAMING[args.vqgan]
     config = OmegaConf.load(cfg)
@@ -30,30 +30,32 @@ def main(args):
 
     # load image
     img_path = args.image_path
-    out_path = args.image_path.replace('.jpg', '_vqgan.jpg').replace('.jpeg', '_vqgan.jpeg').replace('.png', '_vqgan.png')
+    out_path = (
+        args.image_path.replace(".jpg", "_vqgan.jpg").replace(".jpeg", "_vqgan.jpeg").replace(".png", "_vqgan.png")
+    )
     input_size = args.image_size
     img = Image.open(img_path).convert("RGB")
 
     # preprocess
     size_org = img.size
     img = img.resize((input_size, input_size))
-    img = np.array(img) / 255.
-    x = 2.0 * img - 1.0 # x value is between [-1, 1]
+    img = np.array(img) / 255.0
+    x = 2.0 * img - 1.0  # x value is between [-1, 1]
     x = torch.tensor(x)
     x = x.unsqueeze(dim=0)
-    x = torch.einsum('nhwc->nchw', x)
+    x = torch.einsum("nhwc->nchw", x)
     x_input = x.float().to("cuda")
 
     # inference
     with torch.no_grad():
         latent, _, [_, _, indices] = model.encode(x_input)
-        output = model.decode_code(indices, latent.shape) # output value is between [-1, 1]
+        output = model.decode_code(indices, latent.shape)  # output value is between [-1, 1]
 
     # postprocess
-    output = F.interpolate(output, size=[size_org[1], size_org[0]], mode='bilinear').permute(0, 2, 3, 1)[0]
+    output = F.interpolate(output, size=[size_org[1], size_org[0]], mode="bilinear").permute(0, 2, 3, 1)[0]
     sample = torch.clamp(127.5 * output + 128.0, 0, 255).to("cpu", dtype=torch.uint8).numpy()
 
-    # save        
+    # save
     Image.fromarray(sample).save(out_path)
     print("Reconstructed image is saved to {}".format(out_path))
 

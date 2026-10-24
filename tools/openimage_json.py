@@ -5,7 +5,8 @@ from PIL import Image
 import multiprocessing as mp
 
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 
 def check_image(image_path):
@@ -40,30 +41,27 @@ def load_image_path(image_info):
     return local_image_paths
 
 
-
 def main(args):
     data_path = args.data_path
-    image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
+    image_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"]
 
     num_processes = 47
-    work_list = [('openimages_{:0>4}'.format(idx), data_path, image_extensions) for idx in range(1, 48)]
+    work_list = [("openimages_{:0>4}".format(idx), data_path, image_extensions) for idx in range(1, 48)]
     with mp.Pool(processes=num_processes) as pool:
         results = pool.map(load_image_path, work_list)
     image_paths = [image_path for sublist in results for image_path in sublist]
-    print('image_paths is loaded')
-
+    print("image_paths is loaded")
 
     num_processes = max(mp.cpu_count() // 2, 4)
     unit = len(image_paths) // num_processes
-    work_list = [(data_path, image_paths[idx*unit:(idx+1)*unit]) for idx in range(num_processes)]
+    work_list = [(data_path, image_paths[idx * unit : (idx + 1) * unit]) for idx in range(num_processes)]
     with mp.Pool(processes=num_processes) as pool:
         results = pool.map(check_image_path, work_list)
     valid_image_paths = [image_path for sublist in results for image_path in sublist]
-    print('image_paths is checked')
+    print("image_paths is checked")
 
-
-    output_json_file_path = os.path.join(data_path, 'image_paths.json')
-    with open(output_json_file_path, 'w') as outfile:
+    output_json_file_path = os.path.join(data_path, "image_paths.json")
+    with open(output_json_file_path, "w") as outfile:
         json.dump(valid_image_paths, outfile, indent=4)
     print(f"Image paths have been saved to {output_json_file_path}")
 

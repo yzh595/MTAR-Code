@@ -20,7 +20,7 @@ if [[ -z "$REFERENCE_NPZ" || -z "$SAMPLE_NPZ" ]]; then
     exit 1
 fi
 
-EVALUATOR="$PROJECT_ROOT/evaluations/c2i/evaluator.py"
+EVALUATOR="$PROJECT_ROOT/evaluations/evaluator.py"
 for required in "$REFERENCE_NPZ" "$SAMPLE_NPZ" "$EVALUATOR"; do
     [[ -s "$required" ]] || { echo "Missing required file: $required" >&2; exit 1; }
 done
@@ -50,8 +50,8 @@ else
 fi
 
 # The evaluator caches classify_image_graph_def.pb relative to its working
-# directory, so keep that cache inside evaluations/c2i.
-cd "$PROJECT_ROOT/evaluations/c2i"
+# directory, so keep that cache inside evaluations.
+cd "$PROJECT_ROOT/evaluations"
 "${EVAL_COMMAND[@]}" "$EVALUATOR" "$REFERENCE_ABS" "$SAMPLE_ABS" \
     2>&1 | tee "$EVALUATION_LOG"
 

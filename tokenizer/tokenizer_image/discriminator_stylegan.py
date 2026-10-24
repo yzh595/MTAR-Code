@@ -5,10 +5,12 @@
 import math
 import torch
 import torch.nn as nn
+
 try:
     from kornia.filters import filter2d
 except:
     pass
+
 
 class Discriminator(nn.Module):
     def __init__(self, input_nc=3, ndf=64, n_layers=3, channel_multiplier=1, image_size=256):
@@ -24,7 +26,7 @@ class Discriminator(nn.Module):
             512: 32 * channel_multiplier,
             1024: 16 * channel_multiplier,
         }
-        
+
         log_size = int(math.log(image_size, 2))
         in_channel = channels[image_size]
 
@@ -40,11 +42,9 @@ class Discriminator(nn.Module):
             leaky_relu(),
         )
         self.final_linear = nn.Sequential(
-            nn.Linear(channels[4] * 4 * 4, channels[4]),
-            leaky_relu(),
-            nn.Linear(channels[4], 1)
+            nn.Linear(channels[4] * 4 * 4, channels[4]), leaky_relu(), nn.Linear(channels[4], 1)
         )
-    
+
     def forward(self, x):
         for block in self.blocks:
             x = block(x)
@@ -57,19 +57,18 @@ class Discriminator(nn.Module):
 class DiscriminatorBlock(nn.Module):
     def __init__(self, input_channels, filters, downsample=True):
         super().__init__()
-        self.conv_res = nn.Conv2d(input_channels, filters, 1, stride = (2 if downsample else 1))
+        self.conv_res = nn.Conv2d(input_channels, filters, 1, stride=(2 if downsample else 1))
 
         self.net = nn.Sequential(
             nn.Conv2d(input_channels, filters, 3, padding=1),
             leaky_relu(),
             nn.Conv2d(filters, filters, 3, padding=1),
-            leaky_relu()
+            leaky_relu(),
         )
 
-        self.downsample = nn.Sequential(
-            Blur(),
-            nn.Conv2d(filters, filters, 3, padding = 1, stride = 2)
-        ) if downsample else None
+        self.downsample = (
+            nn.Sequential(Blur(), nn.Conv2d(filters, filters, 3, padding=1, stride=2)) if downsample else None
+        )
 
     def forward(self, x):
         res = self.conv_res(x)
@@ -80,16 +79,15 @@ class DiscriminatorBlock(nn.Module):
         return x
 
 
-
 class Blur(nn.Module):
     def __init__(self):
         super().__init__()
         f = torch.Tensor([1, 2, 1])
-        self.register_buffer('f', f)
-    
+        self.register_buffer("f", f)
+
     def forward(self, x):
         f = self.f
-        f = f[None, None, :] * f [None, :, None]
+        f = f[None, None, :] * f[None, :, None]
         return filter2d(x, f, normalized=True)
 
 

@@ -3,7 +3,7 @@
 # import os
 # from torch.utils.data import Dataset
 # from torchvision.datasets import ImageFolder
-# import glob 
+# import glob
 
 # class CustomDataset(Dataset):
 #     def __init__(self, feature_dir, label_dir):
@@ -13,10 +13,10 @@
 #         """
 #         self.feature_dir = feature_dir
 #         self.label_dir = label_dir
-        
+
 #         # [逻辑] 自动推断分数目录 (xxx_codes -> xxx_scores)
 #         self.score_dir = feature_dir.replace('_codes', '_scores')
-        
+
 #         # 检查是否包含 TenCrop 增强
 #         self.flip = 'flip' in self.feature_dir # 这是一个简单的标记检查，不一定完全准确，但够用
 
@@ -41,7 +41,7 @@
 #         print(f"正在扫描目录中的 .npy 文件: {feature_dir}")
 #         self.feature_files = sorted(glob.glob(os.path.join(feature_dir, '*.npy')))
 #         self.label_files = sorted(glob.glob(os.path.join(label_dir, '*.npy')))
-        
+
 #         # [逻辑] 扫描分数文件
 #         if os.path.exists(self.score_dir):
 #             self.score_files = sorted(glob.glob(os.path.join(self.score_dir, '*.npy')))
@@ -51,21 +51,21 @@
 #             self.score_files = []
 #             self.use_scores = False
 #             print(f"未检测到分数目录 {self.score_dir}，将跳过分数加载。")
-        
+
 #         if not self.feature_files:
 #             raise FileNotFoundError(f"错误：在目录 {feature_dir} 中没有找到任何 .npy 文件。")
-            
+
 #         print(f"成功找到 {len(self.feature_files)} 个数据样本。")
 
 #     def __len__(self):
 #         # 严格校验数量一致性
 #         assert len(self.feature_files) == len(self.label_files), \
 #             f"特征数 ({len(self.feature_files)}) 与 标签数 ({len(self.label_files)}) 不匹配!"
-        
+
 #         if self.use_scores:
 #             assert len(self.feature_files) == len(self.score_files), \
 #                 f"特征数 ({len(self.feature_files)}) 与 分数数 ({len(self.score_files)}) 不匹配!"
-                
+
 #         return len(self.feature_files)
 
 #     def __getitem__(self, idx):
@@ -80,9 +80,9 @@
 #         if use_aug_folder:
 #             base_name = os.path.basename(self.feature_files[idx])
 #             feature_path = os.path.join(self.aug_feature_dir, base_name)
-#             label_path = os.path.join(self.aug_label_dir, base_name) 
+#             label_path = os.path.join(self.aug_label_dir, base_name)
 #             score_path = os.path.join(self.aug_score_dir, base_name) if self.aug_score_dir else None
-            
+
 #             # 安全检查：防止增强目录缺文件
 #             if not os.path.exists(feature_path):
 #                 # 回退到主目录
@@ -93,7 +93,7 @@
 #             feature_path = self.feature_files[idx]
 #             label_path = self.label_files[idx]
 #             score_path = self.score_files[idx] if self.use_scores else None
-        
+
 #         # --- 2. 加载数据 ---
 #         try:
 #             features = np.load(feature_path) # Expected: (1, num_augs, L)
@@ -107,40 +107,40 @@
 #         # --- 3. 同步随机增强选择 (Critical Step) ---
 #         # 这里的核心假设：数据格式为 [Batch=1, Num_Augs, Seq_Len]
 #         # 如果格式不同 (例如没有 batch 维度)，需要调整 dim 索引
-        
+
 #         selected_feat = features
 #         selected_score = scores
 
 #         # 检查是否包含 Augmentation 维度
 #         # Case 1: [1, Num_Aug, Seq] -> ndim=3
 #         # Case 2: [Num_Aug, Seq] -> ndim=2 (假设 Num_Aug < Seq_Len，避免混淆)
-        
+
 #         num_augs = 1
 #         if features.ndim == 3:
 #             num_augs = features.shape[1]
 #             # 随机选一个增强
 #             aug_idx = torch.randint(0, num_augs, (1,)).item()
 #             selected_feat = features[:, aug_idx, :] # [1, Seq]
-            
+
 #             if scores is not None and scores.ndim == 3:
 #                 selected_score = scores[:, aug_idx, :] # [1, Seq]
-                
+
 #         elif features.ndim == 2:
 #             # 这里的判断有点风险，假设第一维如果是小的数(<=10)就是 aug，如果是大的(256)就是 seq
-#             if features.shape[0] <= 20: 
+#             if features.shape[0] <= 20:
 #                 num_augs = features.shape[0]
 #                 aug_idx = torch.randint(0, num_augs, (1,)).item()
 #                 selected_feat = features[aug_idx] # [Seq]
 #                 # 统一加回 batch 维度 -> [1, Seq]
-#                 selected_feat = selected_feat[None, :] 
-                
+#                 selected_feat = selected_feat[None, :]
+
 #                 if scores is not None and scores.ndim == 2:
 #                     selected_score = scores[aug_idx][None, :]
 
 #         # --- 4. 转换为 Tensor ---
 #         features_t = torch.from_numpy(selected_feat).long() # Int16 -> Long
 #         labels_t = torch.from_numpy(labels).long()
-        
+
 #         if selected_score is not None:
 #             scores_t = torch.from_numpy(selected_score).float() # Float16 -> Float32
 #         else:
@@ -161,7 +161,7 @@
 # def build_imagenet_code(args):
 #     feature_dir = f"{args.code_path}/imagenet{args.image_size}_codes"
 #     label_dir = f"{args.code_path}/imagenet{args.image_size}_labels"
-    
+
 #     # 兼容性检查：有些脚本可能叫 imagenet256_codes，有些叫 train256_codes
 #     if not os.path.exists(feature_dir):
 #          # 尝试用 dataset 名字拼接
@@ -171,7 +171,7 @@
 #     # 最终断言
 #     assert os.path.exists(feature_dir), f"数据目录不存在: {feature_dir}"
 #     assert os.path.exists(label_dir), f"标签目录不存在: {label_dir}"
-        
+
 #     return CustomDataset(feature_dir, label_dir)
 
 # def build_dataset(args, transform=None):
@@ -219,11 +219,11 @@
 #         print(f"正在扫描目录中的 .npy 文件: {feature_dir}")
 #         self.feature_files = sorted(glob.glob(os.path.join(feature_dir, '*.npy')))
 #         self.label_files = sorted(glob.glob(os.path.join(label_dir, '*.npy')))
-        
+
 #         # 增加一个检查，确保找到了文件
 #         if not self.feature_files:
 #             raise FileNotFoundError(f"错误：在目录 {feature_dir} 中没有找到任何 .npy 文件。请检查您的数据路径。")
-            
+
 #         print(f"成功找到 {len(self.feature_files)} 个数据样本。")
 
 #     def __len__(self):
@@ -253,10 +253,10 @@
 #             # 如果不使用增强目录，直接使用 glob 扫描到的完整路径
 #             feature_path = self.feature_files[idx]
 #             label_path = self.label_files[idx]
-        
+
 #         # --- 数据加载与处理 ---
 #         features = np.load(feature_path)
-        
+
 #         # 从加载的 .npy 文件中随机选择一个数据增强版本
 #         # 假设 features 的形状是 (1, num_augs, seq_len) 或 (num_augs, seq_len)
 #         # 这个逻辑比官方代码的 `if self.flip:` 更健壮
@@ -269,7 +269,7 @@
 #                 features = features[aug_idx]
 
 #         labels = np.load(label_path)
-        
+
 #         return torch.from_numpy(features), torch.from_numpy(labels)
 
 
@@ -286,7 +286,6 @@
 #     return CustomDataset(feature_dir, label_dir)
 
 
-
 ################fps最佳
 import torch
 import torch.nn.functional as F
@@ -294,7 +293,7 @@ import numpy as np
 import os
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
-import glob 
+import glob
 
 
 def resize_flat_scores_to_match_tokens(scores, target_len):
@@ -311,8 +310,8 @@ def resize_flat_scores_to_match_tokens(scores, target_len):
     if source_len == target_len:
         return scores
 
-    source_hw = int(round(source_len ** 0.5))
-    target_hw = int(round(target_len ** 0.5))
+    source_hw = int(round(source_len**0.5))
+    target_hw = int(round(target_len**0.5))
     if source_hw * source_hw != source_len or target_hw * target_hw != target_len:
         raise ValueError(
             f"Cannot resize semantic scores from length {source_len} to {target_len}; "
@@ -324,18 +323,19 @@ def resize_flat_scores_to_match_tokens(scores, target_len):
     resized = tensor.view(*orig_shape[:-1], target_len).numpy().astype(scores_arr.dtype, copy=False)
     return resized
 
+
 class CustomDataset(Dataset):
     def __init__(self, feature_dir, label_dir, strict=False):
         self.strict = strict
         self.feature_dir = feature_dir
         self.label_dir = label_dir
-        self.score_dir = feature_dir.replace('_codes', '_scores')
-        
-        self.flip = 'flip' in self.feature_dir 
+        self.score_dir = feature_dir.replace("_codes", "_scores")
 
-        aug_feature_dir = feature_dir.replace('ten_crop/', 'ten_crop_105/')
-        aug_label_dir = label_dir.replace('ten_crop/', 'ten_crop_105/')
-        aug_score_dir = self.score_dir.replace('ten_crop/', 'ten_crop_105/')
+        self.flip = "flip" in self.feature_dir
+
+        aug_feature_dir = feature_dir.replace("ten_crop/", "ten_crop_105/")
+        aug_label_dir = label_dir.replace("ten_crop/", "ten_crop_105/")
+        aug_score_dir = self.score_dir.replace("ten_crop/", "ten_crop_105/")
 
         if os.path.exists(aug_feature_dir) and os.path.exists(aug_label_dir):
             self.aug_feature_dir = aug_feature_dir
@@ -347,30 +347,34 @@ class CustomDataset(Dataset):
             self.aug_score_dir = None
 
         print(f"正在扫描目录中的 .npy 文件: {feature_dir}")
-        self.feature_files = sorted(glob.glob(os.path.join(feature_dir, '*.npy')))
-        self.label_files = sorted(glob.glob(os.path.join(label_dir, '*.npy')))
-        
+        self.feature_files = sorted(glob.glob(os.path.join(feature_dir, "*.npy")))
+        self.label_files = sorted(glob.glob(os.path.join(label_dir, "*.npy")))
+
         if os.path.exists(self.score_dir):
-            self.score_files = sorted(glob.glob(os.path.join(self.score_dir, '*.npy')))
+            self.score_files = sorted(glob.glob(os.path.join(self.score_dir, "*.npy")))
             self.use_scores = True
             print(f"检测到分数目录: {self.score_dir}, 将加载语义分数。")
         else:
             self.score_files = []
             self.use_scores = False
             print(f"未检测到分数目录 {self.score_dir}，将跳过分数加载。")
-        
+
         if not self.feature_files:
             raise FileNotFoundError(f"错误：在目录 {feature_dir} 中没有找到任何 .npy 文件。")
 
         if self.strict:
             stems = lambda paths: [os.path.basename(path) for path in paths]
-            if not self.use_scores or stems(self.feature_files) != stems(self.label_files) or stems(self.feature_files) != stems(self.score_files):
+            if (
+                not self.use_scores
+                or stems(self.feature_files) != stems(self.label_files)
+                or stems(self.feature_files) != stems(self.score_files)
+            ):
                 raise ValueError("Semantic training requires matching code, label and score .npy filenames.")
-            
+
         print(f"成功找到 {len(self.feature_files)} 个数据样本。")
 
         # 性能优化开关
-        self.load_semantic_scores = True 
+        self.load_semantic_scores = True
 
     def __len__(self):
         return len(self.feature_files)
@@ -381,9 +385,9 @@ class CustomDataset(Dataset):
         if use_aug_folder:
             base_name = os.path.basename(self.feature_files[idx])
             feature_path = os.path.join(self.aug_feature_dir, base_name)
-            label_path = os.path.join(self.aug_label_dir, base_name) 
+            label_path = os.path.join(self.aug_label_dir, base_name)
             score_path = os.path.join(self.aug_score_dir, base_name) if self.aug_score_dir else None
-            
+
             if not os.path.exists(feature_path):
                 feature_path = self.feature_files[idx]
                 label_path = self.label_files[idx]
@@ -392,7 +396,7 @@ class CustomDataset(Dataset):
             feature_path = self.feature_files[idx]
             label_path = self.label_files[idx]
             score_path = self.score_files[idx] if self.use_scores else None
-        
+
         try:
             features = np.load(feature_path)
             labels = np.load(label_path)
@@ -414,61 +418,66 @@ class CustomDataset(Dataset):
 
         selected_feat = features
         selected_score = scores
-        
+
         num_augs = 1
         if features.ndim == 3:
             num_augs = features.shape[1]
             aug_idx = torch.randint(0, num_augs, (1,)).item()
-            selected_feat = features[:, aug_idx, :] 
-            
+            selected_feat = features[:, aug_idx, :]
+
             if scores is not None and scores.ndim == 3:
                 selected_score = scores[:, aug_idx, :]
-                
+
         elif features.ndim == 2:
-            if features.shape[0] <= 20: 
+            if features.shape[0] <= 20:
                 num_augs = features.shape[0]
                 aug_idx = torch.randint(0, num_augs, (1,)).item()
-                selected_feat = features[aug_idx] 
-                selected_feat = selected_feat[None, :] 
-                
+                selected_feat = features[aug_idx]
+                selected_feat = selected_feat[None, :]
+
                 if scores is not None and scores.ndim == 2:
                     selected_score = scores[aug_idx][None, :]
 
         features_t = torch.from_numpy(selected_feat).long()
         labels_t = torch.from_numpy(labels).long()
-        
-        if features_t.ndim == 1: features_t = features_t.unsqueeze(0)
+
+        if features_t.ndim == 1:
+            features_t = features_t.unsqueeze(0)
 
         # [FPS 关键优化] 彻底不返回第三个参数，不分配 Zero Tensor
         if selected_score is not None:
             selected_score = resize_flat_scores_to_match_tokens(selected_score, features_t.shape[-1])
-            scores_t = torch.from_numpy(selected_score).float() 
-            if scores_t.ndim == 1: scores_t = scores_t.unsqueeze(0)
+            scores_t = torch.from_numpy(selected_score).float()
+            if scores_t.ndim == 1:
+                scores_t = scores_t.unsqueeze(0)
             return features_t, labels_t, scores_t
         else:
             # Code B 模式：只返回两个，0 CPU 开销，0 内存拷贝
             return features_t, labels_t
 
+
 def build_imagenet(args, transform):
     return ImageFolder(args.data_path, transform=transform)
+
 
 def build_imagenet_code(args):
     feature_dir = f"{args.code_path}/imagenet{args.image_size}_codes"
     label_dir = f"{args.code_path}/imagenet{args.image_size}_labels"
-    
+
     if not os.path.exists(feature_dir):
-         feature_dir = f"{args.code_path}/{args.dataset}{args.image_size}_codes"
-         label_dir = f"{args.code_path}/{args.dataset}{args.image_size}_labels"
+        feature_dir = f"{args.code_path}/{args.dataset}{args.image_size}_codes"
+        label_dir = f"{args.code_path}/{args.dataset}{args.image_size}_labels"
 
     assert os.path.exists(feature_dir), f"数据目录不存在: {feature_dir}"
     assert os.path.exists(label_dir), f"标签目录不存在: {label_dir}"
-        
+
     return CustomDataset(feature_dir, label_dir, strict=getattr(args, "strict_semantic_data", False))
 
+
 def build_dataset(args, transform=None):
-    if args.dataset == 'imagenet':
+    if args.dataset == "imagenet":
         return build_imagenet(args, transform)
-    elif args.dataset == 'imagenet_code':
+    elif args.dataset == "imagenet_code":
         return build_imagenet_code(args)
     else:
         return build_imagenet_code(args)

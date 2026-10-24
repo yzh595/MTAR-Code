@@ -6,18 +6,21 @@ import functools
 import math
 import torch
 import torch.nn as nn
+
 try:
     from kornia.filters import filter2d
 except:
     pass
+
 
 #################################################################################
 #                                    PatchGAN                                   #
 #################################################################################
 class PatchGANDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator as in Pix2Pix
-        --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
+    --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
     """
+
     def __init__(self, input_nc=3, ndf=64, n_layers=3, use_actnorm=False):
         """Construct a PatchGAN discriminator
         Parameters:
@@ -43,28 +46,29 @@ class PatchGANDiscriminator(nn.Module):
         nf_mult_prev = 1
         for n in range(1, n_layers):  # gradually increase the number of filters
             nf_mult_prev = nf_mult
-            nf_mult = min(2 ** n, 8)
+            nf_mult = min(2**n, 8)
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
+                nn.LeakyReLU(0.2, True),
             ]
 
         nf_mult_prev = nf_mult
-        nf_mult = min(2 ** n_layers, 8)
+        nf_mult = min(2**n_layers, 8)
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
             norm_layer(ndf * nf_mult),
-            nn.LeakyReLU(0.2, True)
+            nn.LeakyReLU(0.2, True),
         ]
 
         sequence += [
-            nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
+            nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)
+        ]  # output 1 channel prediction map
         self.main = nn.Sequential(*sequence)
 
         self.apply(self._init_weights)
-    
-    def _init_weights(self, module):    
+
+    def _init_weights(self, module):
         if isinstance(module, nn.Conv2d):
             nn.init.normal_(module.weight.data, 0.0, 0.02)
         elif isinstance(module, nn.BatchNorm2d):
@@ -77,8 +81,7 @@ class PatchGANDiscriminator(nn.Module):
 
 
 class ActNorm(nn.Module):
-    def __init__(self, num_features, logdet=False, affine=True,
-                 allow_reverse_init=False):
+    def __init__(self, num_features, logdet=False, affine=True, allow_reverse_init=False):
         assert affine
         super().__init__()
         self.logdet = logdet
@@ -86,25 +89,13 @@ class ActNorm(nn.Module):
         self.scale = nn.Parameter(torch.ones(1, num_features, 1, 1))
         self.allow_reverse_init = allow_reverse_init
 
-        self.register_buffer('initialized', torch.tensor(0, dtype=torch.uint8))
+        self.register_buffer("initialized", torch.tensor(0, dtype=torch.uint8))
 
     def initialize(self, input):
         with torch.no_grad():
             flatten = input.permute(1, 0, 2, 3).contiguous().view(input.shape[1], -1)
-            mean = (
-                flatten.mean(1)
-                .unsqueeze(1)
-                .unsqueeze(2)
-                .unsqueeze(3)
-                .permute(1, 0, 2, 3)
-            )
-            std = (
-                flatten.std(1)
-                .unsqueeze(1)
-                .unsqueeze(2)
-                .unsqueeze(3)
-                .permute(1, 0, 2, 3)
-            )
+            mean = flatten.mean(1).unsqueeze(1).unsqueeze(2).unsqueeze(3).permute(1, 0, 2, 3)
+            std = flatten.std(1).unsqueeze(1).unsqueeze(2).unsqueeze(3).permute(1, 0, 2, 3)
 
             self.loc.data.copy_(-mean)
             self.scale.data.copy_(1 / (std + 1e-6))
@@ -113,7 +104,7 @@ class ActNorm(nn.Module):
         if reverse:
             return self.reverse(input)
         if len(input.shape) == 2:
-            input = input[:,:,None,None]
+            input = input[:, :, None, None]
             squeeze = True
         else:
             squeeze = False
@@ -131,7 +122,7 @@ class ActNorm(nn.Module):
 
         if self.logdet:
             log_abs = torch.log(torch.abs(self.scale))
-            logdet = height*width*torch.sum(log_abs)
+            logdet = height * width * torch.sum(log_abs)
             logdet = logdet * torch.ones(input.shape[0]).to(input)
             return h, logdet
 
@@ -149,7 +140,7 @@ class ActNorm(nn.Module):
                 self.initialized.fill_(1)
 
         if len(output.shape) == 2:
-            output = output[:,:,None,None]
+            output = output[:, :, None, None]
             squeeze = True
         else:
             squeeze = False
@@ -159,7 +150,6 @@ class ActNorm(nn.Module):
         if squeeze:
             h = h.squeeze(-1).squeeze(-1)
         return h
-
 
 
 #################################################################################
@@ -179,7 +169,7 @@ class StyleGANDiscriminator(nn.Module):
             512: 32 * channel_multiplier,
             1024: 16 * channel_multiplier,
         }
-        
+
         log_size = int(math.log(image_size, 2))
         in_channel = channels[image_size]
 
@@ -195,11 +185,9 @@ class StyleGANDiscriminator(nn.Module):
             leaky_relu(),
         )
         self.final_linear = nn.Sequential(
-            nn.Linear(channels[4] * 4 * 4, channels[4]),
-            leaky_relu(),
-            nn.Linear(channels[4], 1)
+            nn.Linear(channels[4] * 4 * 4, channels[4]), leaky_relu(), nn.Linear(channels[4], 1)
         )
-    
+
     def forward(self, x):
         for block in self.blocks:
             x = block(x)
@@ -212,19 +200,18 @@ class StyleGANDiscriminator(nn.Module):
 class DiscriminatorBlock(nn.Module):
     def __init__(self, input_channels, filters, downsample=True):
         super().__init__()
-        self.conv_res = nn.Conv2d(input_channels, filters, 1, stride = (2 if downsample else 1))
+        self.conv_res = nn.Conv2d(input_channels, filters, 1, stride=(2 if downsample else 1))
 
         self.net = nn.Sequential(
             nn.Conv2d(input_channels, filters, 3, padding=1),
             leaky_relu(),
             nn.Conv2d(filters, filters, 3, padding=1),
-            leaky_relu()
+            leaky_relu(),
         )
 
-        self.downsample = nn.Sequential(
-            Blur(),
-            nn.Conv2d(filters, filters, 3, padding = 1, stride = 2)
-        ) if downsample else None
+        self.downsample = (
+            nn.Sequential(Blur(), nn.Conv2d(filters, filters, 3, padding=1, stride=2)) if downsample else None
+        )
 
     def forward(self, x):
         res = self.conv_res(x)
@@ -239,11 +226,11 @@ class Blur(nn.Module):
     def __init__(self):
         super().__init__()
         f = torch.Tensor([1, 2, 1])
-        self.register_buffer('f', f)
-    
+        self.register_buffer("f", f)
+
     def forward(self, x):
         f = self.f
-        f = f[None, None, :] * f [None, :, None]
+        f = f[None, None, :] * f[None, :, None]
         return filter2d(x, f, normalized=True)
 
 

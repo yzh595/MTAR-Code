@@ -1,4 +1,5 @@
 import torch
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
@@ -160,11 +161,15 @@ def build_dino_keep_indices(
     keep_num = max(1, min(keep_num, num_image_tokens))
 
     if keep_num == num_image_tokens:
-        return torch.arange(
-            num_image_tokens,
-            device=device,
-            dtype=torch.long,
-        ).unsqueeze(0).repeat(batch_size, 1)
+        return (
+            torch.arange(
+                num_image_tokens,
+                device=device,
+                dtype=torch.long,
+            )
+            .unsqueeze(0)
+            .repeat(batch_size, 1)
+        )
 
     if dino_scores is None:
         noise = torch.rand(
@@ -264,14 +269,9 @@ def build_grouped_teacher_indices(
     max_offset = max(group_offsets)
     num_candidates = num_image_tokens - max_offset
     if num_candidates <= 0:
-        raise ValueError(
-            f"No valid group anchors for N={num_image_tokens}, offsets={group_offsets}"
-        )
+        raise ValueError(f"No valid group anchors for N={num_image_tokens}, offsets={group_offsets}")
     if keep_num < len(group_offsets):
-        raise ValueError(
-            f"Teacher budget {keep_num} cannot hold one group of size "
-            f"{len(group_offsets)}"
-        )
+        raise ValueError(f"Teacher budget {keep_num} cannot hold one group of size " f"{len(group_offsets)}")
 
     scores = dino_scores.reshape(dino_scores.shape[0], -1).to(device=device)
     scores = scores[:batch_size, :num_image_tokens].float()
@@ -335,10 +335,7 @@ def build_grouped_teacher_indices(
 
     final_count = teacher_keep_mask.sum(dim=1)
     if not torch.equal(final_count, torch.full_like(final_count, keep_num)):
-        raise RuntimeError(
-            f"Grouped Teacher budget mismatch: expected={keep_num}, "
-            f"actual={final_count.tolist()}"
-        )
+        raise RuntimeError(f"Grouped Teacher budget mismatch: expected={keep_num}, " f"actual={final_count.tolist()}")
 
     teacher_ids_keep = torch.topk(
         teacher_keep_mask.float(),
@@ -364,10 +361,7 @@ def debug_tensor_stats(name, x, logger=None, rank=0, step=None, max_print=True):
         msg = f"{prefix}{name}: type={type(x)}"
     else:
         with torch.no_grad():
-            msg = (
-                f"{prefix}{name}: "
-                f"shape={tuple(x.shape)}, dtype={x.dtype}, device={x.device}"
-            )
+            msg = f"{prefix}{name}: " f"shape={tuple(x.shape)}, dtype={x.dtype}, device={x.device}"
 
             if x.numel() > 0:
                 try:
@@ -493,18 +487,26 @@ def build_sparse_proximity_mask(
         :full_seq_len,
     ].to(device)
 
-    cls_pos = torch.arange(
-        cls_token_num,
-        device=device,
-        dtype=torch.long,
-    ).unsqueeze(0).expand(B, -1)
+    cls_pos = (
+        torch.arange(
+            cls_token_num,
+            device=device,
+            dtype=torch.long,
+        )
+        .unsqueeze(0)
+        .expand(B, -1)
+    )
 
     img_pos = ids_keep + cls_token_num
 
-    sparse_pos = torch.cat(
-        [cls_pos, img_pos],
-        dim=1,
-    ).long().contiguous()
+    sparse_pos = (
+        torch.cat(
+            [cls_pos, img_pos],
+            dim=1,
+        )
+        .long()
+        .contiguous()
+    )
 
     sparse_len = sparse_pos.shape[1]
 
@@ -520,11 +522,15 @@ def build_sparse_proximity_mask(
             f"ids_keep shape={tuple(ids_keep.shape)}"
         )
 
-    batch_idx = torch.arange(
-        B,
-        device=device,
-        dtype=torch.long,
-    ).view(B, 1, 1).expand(B, sparse_len, sparse_len)
+    batch_idx = (
+        torch.arange(
+            B,
+            device=device,
+            dtype=torch.long,
+        )
+        .view(B, 1, 1)
+        .expand(B, sparse_len, sparse_len)
+    )
 
     row_idx = sparse_pos.unsqueeze(2).expand(
         B,
@@ -603,10 +609,7 @@ def check_vq_and_label_ids(
 
 def check_feature_shapes(s_feats, t_feats, ids_keep, logger=None, rank=0, step=None):
     if len(s_feats) != len(t_feats):
-        raise RuntimeError(
-            f"Student features and teacher features mismatch: "
-            f"{len(s_feats)} vs {len(t_feats)}"
-        )
+        raise RuntimeError(f"Student features and teacher features mismatch: " f"{len(s_feats)} vs {len(t_feats)}")
 
     for i, (s_feat, t_feat) in enumerate(zip(s_feats, t_feats)):
         if rank == 0 and step is not None:
@@ -650,16 +653,11 @@ def should_debug(args, rank, train_steps):
 def main(args):
     assert torch.cuda.is_available(), "Training currently requires at least one GPU."
 
-    checkpoint_steps = {
-        int(step.strip())
-        for step in args.checkpoint_steps.split(",")
-        if step.strip()
-    }
+    checkpoint_steps = {int(step.strip()) for step in args.checkpoint_steps.split(",") if step.strip()}
 
     init_distributed_mode(args)
 
-    assert args.global_batch_size % dist.get_world_size() == 0, \
-        "Batch size must be divisible by world size."
+    assert args.global_batch_size % dist.get_world_size() == 0, "Batch size must be divisible by world size."
 
     rank = dist.get_rank()
     device = rank % torch.cuda.device_count()
@@ -694,13 +692,8 @@ def main(args):
         cloud_checkpoint_dir = None
 
     logger.info(f"{args}")
-    logger.info(
-        f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}."
-    )
-    logger.info(
-        "Scheduled checkpoint steps: "
-        + (", ".join(str(step) for step in sorted(checkpoint_steps)) or "none")
-    )
+    logger.info(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
+    logger.info("Scheduled checkpoint steps: " + (", ".join(str(step) for step in sorted(checkpoint_steps)) or "none"))
 
     if args.drop_path_rate > 0.0:
         dropout_p = 0.0
@@ -708,7 +701,7 @@ def main(args):
         dropout_p = args.dropout_p
 
     latent_size = args.image_size // args.downsample_size
-    num_image_tokens = latent_size ** 2
+    num_image_tokens = latent_size**2
 
     t_config = TEACHER_CONFIGS[args.teacher_model]
 
@@ -719,8 +712,9 @@ def main(args):
 
     assert len(student_target_layers) > 0, "student_target_layers cannot be empty."
     assert len(teacher_target_layers) > 0, "teacher_target_layers cannot be empty."
-    assert len(student_target_layers) == len(teacher_target_layers), \
-        f"student_target_layers and teacher_target_layers must have same length."
+    assert len(student_target_layers) == len(
+        teacher_target_layers
+    ), f"student_target_layers and teacher_target_layers must have same length."
 
     assert min(student_target_layers) >= 1
     assert min(teacher_target_layers) >= 1
@@ -736,22 +730,27 @@ def main(args):
         "GPT-3B": 24,
         "GPT-7B": 32,
     }
-    assert args.gpt_model in student_depth_by_model, \
-        f"Unknown student model depth for {args.gpt_model}"
+    assert args.gpt_model in student_depth_by_model, f"Unknown student model depth for {args.gpt_model}"
     student_depth = student_depth_by_model[args.gpt_model]
-    assert max(student_target_layers) <= student_depth, \
-        f"{args.gpt_model} student only has {student_depth} layers, got {max(student_target_layers)}"
-    assert 1 <= args.future_feature_pred_layer <= student_depth, \
-        f"future_feature_pred_layer must be within [1, {student_depth}] for {args.gpt_model}"
+    assert (
+        max(student_target_layers) <= student_depth
+    ), f"{args.gpt_model} student only has {student_depth} layers, got {max(student_target_layers)}"
+    assert (
+        1 <= args.future_feature_pred_layer <= student_depth
+    ), f"future_feature_pred_layer must be within [1, {student_depth}] for {args.gpt_model}"
 
-    assert max(teacher_target_layers) <= t_config["n_layer"], \
-        f"{args.teacher_model} only has {t_config['n_layer']} layers"
-    assert len(future_feature_offsets) == len(future_feature_loss_weights), \
-        "future_feature_offsets and future_feature_loss_weights must have the same length"
-    assert args.max_student_drop_rate == 0.5, \
-        "This controlled experiment requires Student SD drop rate 0.50."
-    assert args.max_physical_drop_rate in (0.4, 0.5, 0.7), \
-        "Teacher GroupDrop sweep only supports controlled rates 0.40, 0.50 and 0.70."
+    assert (
+        max(teacher_target_layers) <= t_config["n_layer"]
+    ), f"{args.teacher_model} only has {t_config['n_layer']} layers"
+    assert len(future_feature_offsets) == len(
+        future_feature_loss_weights
+    ), "future_feature_offsets and future_feature_loss_weights must have the same length"
+    assert args.max_student_drop_rate == 0.5, "This controlled experiment requires Student SD drop rate 0.50."
+    assert args.max_physical_drop_rate in (
+        0.4,
+        0.5,
+        0.7,
+    ), "Teacher GroupDrop sweep only supports controlled rates 0.40, 0.50 and 0.70."
 
     logger.info("Layer-wise distillation mapping:")
     for s_l, t_l in zip(student_target_layers, teacher_target_layers):
@@ -801,25 +800,20 @@ def main(args):
         ffn_dropout_p=dropout_p,
         drop_path_rate=args.drop_path_rate,
         token_dropout_p=args.token_dropout_p,
-
         student_target_layers=student_target_layers,
         teacher_dim=t_config["dim"],
         projector_dim=args.projector_dim,
         future_feature_pred_layer=args.future_feature_pred_layer,
         future_feature_offsets=future_feature_offsets,
-
         loss_weight_contrast=args.loss_weight_contrast,
         contrast_temp=args.contrast_temp,
         contrast_dropout_p=args.contrast_dropout_p,
         contrast_num_samples=args.contrast_num_samples,
-
         input_token_drop_rate=0.0,
         semantic_drop_temperature=args.semantic_drop_temperature,
     ).to(device)
 
-    logger.info(
-        f"GPT Student Parameters: {sum(p.numel() for p in model.parameters()):,}"
-    )
+    logger.info(f"GPT Student Parameters: {sum(p.numel() for p in model.parameters()):,}")
     if args.loss_weight_contrast <= 0.0 or model.contrast_head is None:
         raise RuntimeError("This training entry point requires an active TCR head.")
     tcr_params = sum(p.numel() for p in model.contrast_head.parameters())
@@ -895,16 +889,13 @@ def main(args):
         def get_activation(name):
             def hook(module, input, output):
                 teacher_features[name] = output.detach()
+
             return hook
 
         for layer_idx in teacher_target_layers:
-            teacher_model.layers[layer_idx - 1].register_forward_hook(
-                get_activation(f"layer_{layer_idx}")
-            )
+            teacher_model.layers[layer_idx - 1].register_forward_hook(get_activation(f"layer_{layer_idx}"))
 
-        logger.info(
-            f"Teacher loaded and frozen. Hooking teacher layers: {teacher_target_layers}"
-        )
+        logger.info(f"Teacher loaded and frozen. Hooking teacher layers: {teacher_target_layers}")
 
     if args.ema:
         ema = deepcopy(model).to(device)
@@ -955,9 +946,7 @@ def main(args):
         if "optimizer" in checkpoint:
             optimizer.load_state_dict(checkpoint["optimizer"])
 
-        train_steps = checkpoint["steps"] if "steps" in checkpoint else int(
-            args.gpt_ckpt.split("/")[-1].split(".")[0]
-        )
+        train_steps = checkpoint["steps"] if "steps" in checkpoint else int(args.gpt_ckpt.split("/")[-1].split(".")[0])
 
         start_epoch = int(train_steps / int(len(dataset) / args.global_batch_size))
         train_steps = int(start_epoch * int(len(dataset) / args.global_batch_size))
@@ -1048,8 +1037,7 @@ def main(args):
 
             if z_indices.shape[1] != num_image_tokens:
                 raise ValueError(
-                    f"z_indices length mismatch: got {z_indices.shape}, "
-                    f"expected image tokens={num_image_tokens}"
+                    f"z_indices length mismatch: got {z_indices.shape}, " f"expected image tokens={num_image_tokens}"
                 )
 
             z_indices, c_indices = check_vq_and_label_ids(
@@ -1120,11 +1108,15 @@ def main(args):
                     temperature=args.semantic_drop_temperature,
                 )
             else:
-                student_ids_keep = torch.arange(
-                    num_kd_image_tokens,
-                    device=device,
-                    dtype=torch.long,
-                ).unsqueeze(0).repeat(z_indices.shape[0], 1)
+                student_ids_keep = (
+                    torch.arange(
+                        num_kd_image_tokens,
+                        device=device,
+                        dtype=torch.long,
+                    )
+                    .unsqueeze(0)
+                    .repeat(z_indices.shape[0], 1)
+                )
 
             student_ids_keep = sanitize_ids_keep(
                 ids_keep=student_ids_keep,
@@ -1166,9 +1158,7 @@ def main(args):
                 index=student_ids_keep,
             )
             if not anchor_at_student.any(dim=1).all():
-                raise RuntimeError(
-                    "At least one sample has no Student/Teacher group-anchor intersection."
-                )
+                raise RuntimeError("At least one sample has no Student/Teacher group-anchor intersection.")
             anchor_tokens_per_sample = anchor_at_student.sum(dim=1).float().mean()
 
             with torch.cuda.amp.autocast(dtype=ptdtype):
@@ -1219,9 +1209,7 @@ def main(args):
                     )
 
                 if not torch.equal(returned_ids_keep, student_ids_keep):
-                    raise RuntimeError(
-                        "Student returned ids_keep differs from student_ids_keep."
-                    )
+                    raise RuntimeError("Student returned ids_keep differs from student_ids_keep.")
 
                 # ============================================================
                 # 2. Teacher forward
@@ -1252,9 +1240,7 @@ def main(args):
                             device=device,
                             dtype=torch.long,
                         )
-                        teacher_ids_keep = torch.cat(
-                            [teacher_base_ids_keep, terminal_teacher_id], dim=1
-                        ).contiguous()
+                        teacher_ids_keep = torch.cat([teacher_base_ids_keep, terminal_teacher_id], dim=1).contiguous()
 
                         sparse_mask = build_sparse_proximity_mask(
                             teacher_model=teacher_model,
@@ -1311,22 +1297,16 @@ def main(args):
                         teacher_full_features = []
                         t_feats = []
                         for layer_id in teacher_target_layers:
-                            teacher_sparse = teacher_features[f"layer_{layer_id}"][
-                                :, args.cls_token_num:-1, :
-                            ]
+                            teacher_sparse = teacher_features[f"layer_{layer_id}"][:, args.cls_token_num : -1, :]
                             teacher_full = teacher_sparse.new_zeros(
                                 teacher_sparse.shape[0],
                                 num_kd_image_tokens,
                                 teacher_sparse.shape[-1],
                             )
-                            scatter_index = teacher_base_ids_keep.unsqueeze(-1).expand(
-                                -1, -1, teacher_sparse.shape[-1]
-                            )
+                            scatter_index = teacher_base_ids_keep.unsqueeze(-1).expand(-1, -1, teacher_sparse.shape[-1])
                             teacher_full.scatter_(1, scatter_index, teacher_sparse)
                             teacher_full_features.append(teacher_full)
-                            student_index = student_ids_keep.unsqueeze(-1).expand(
-                                -1, -1, teacher_sparse.shape[-1]
-                            )
+                            student_index = student_ids_keep.unsqueeze(-1).expand(-1, -1, teacher_sparse.shape[-1])
                             t_feats.append(torch.gather(teacher_full, 1, student_index))
 
                 # ============================================================
@@ -1360,8 +1340,7 @@ def main(args):
                         token_distill_loss = (s_norm - t_norm).pow(2).sum(dim=-1)
                         valid_weight = anchor_at_student.to(token_distill_loss.dtype)
                         distill_loss = distill_loss + (
-                            (token_distill_loss * valid_weight).sum()
-                            / valid_weight.sum().clamp_min(1.0)
+                            (token_distill_loss * valid_weight).sum() / valid_weight.sum().clamp_min(1.0)
                         )
 
                     distill_loss = distill_loss / len(s_feats)
@@ -1376,10 +1355,10 @@ def main(args):
                         future_feature_loss_weights,
                     ):
                         target_positions = student_ids_keep + int(offset)
-                        target_index = target_positions.clamp(
-                            0, num_kd_image_tokens - 1
-                        ).unsqueeze(-1).expand(
-                            -1, -1, teacher_future_targets.shape[-1]
+                        target_index = (
+                            target_positions.clamp(0, num_kd_image_tokens - 1)
+                            .unsqueeze(-1)
+                            .expand(-1, -1, teacher_future_targets.shape[-1])
                         )
                         target = torch.gather(
                             teacher_future_targets,
@@ -1395,20 +1374,15 @@ def main(args):
 
                         prediction_norm = F.normalize(prediction.float(), dim=-1)
                         target_norm = F.normalize(target.float(), dim=-1)
-                        token_future_loss = (
-                            (prediction_norm - target_norm).pow(2).sum(dim=-1)
-                        )
+                        token_future_loss = (prediction_norm - target_norm).pow(2).sum(dim=-1)
                         valid_weight = anchor_at_student.to(token_future_loss.dtype)
                         future_feature_loss = future_feature_loss + float(weight) * (
-                            (token_future_loss * valid_weight).sum()
-                            / valid_weight.sum().clamp_min(1.0)
+                            (token_future_loss * valid_weight).sum() / valid_weight.sum().clamp_min(1.0)
                         )
 
                     loss = loss + future_feature_loss
                 elif future_feature_predictions:
-                    raise RuntimeError(
-                        "Future teacher-feature prediction was enabled without teacher features."
-                    )
+                    raise RuntimeError("Future teacher-feature prediction was enabled without teacher features.")
 
                 loss = loss + args.loss_weight_contrast * contrast_loss
 
@@ -1512,9 +1486,7 @@ def main(args):
             if should_save_checkpoint:
                 if rank == 0:
                     model_weight = (
-                        model.module._orig_mod.state_dict()
-                        if not args.no_compile
-                        else model.module.state_dict()
+                        model.module._orig_mod.state_dict() if not args.no_compile else model.module.state_dict()
                     )
 
                     checkpoint = {
