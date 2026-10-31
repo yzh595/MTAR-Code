@@ -34,33 +34,22 @@ This repository implements **MTAR** and its teacher-guided extension, **MTAR++**
 
 ## Method Overview
 
-### MTAR++: multi-feature prediction
+### Multi-token foresight supervision
 
-Multi-feature prediction (MFP) retains next-token prediction and adds independent heads that predict the teacher's features at the current, next-in-raster-order, and bottom positions from the student's current representation. The default teacher is NAR-XL. Token-level contrastive regularization further encourages consistency under feature perturbations and discriminability among token representations.
-
-<p align="center">
-  <img src="assets/mtarpp_mfp.png" width="620" alt="MTAR++ multi-feature prediction: a student's current representation predicts current and spatially related future features from a pretrained frozen generative teacher, alongside next-token supervision.">
-  <br><sub>Transfer pretrained generative features through current- and future-position prediction.</sub>
-</p>
-
-<details>
-<summary><strong>MTAR: multi-token prediction</strong></summary>
-
-MTAR uses multi-token prediction (MTP) to predict ground-truth codebook indices at spatially related future positions. It combines MTP with token-level contrastive regularization and student-side semantic dropping, without a generative teacher.
+MTAR uses multi-token prediction (MTP) to predict ground-truth codebook indices at spatially related future positions. MTAR++ replaces these discrete auxiliary targets with multi-feature prediction (MFP), predicting current- and future-position features from a pretrained and frozen generative teacher while retaining next-token prediction. The default teacher is NAR-XL. Both frameworks incorporate token-level contrastive regularization to encourage consistency under feature perturbations and discriminability among token representations.
 
 <p align="center">
-  <img src="assets/mtar_mtp.png" width="760" alt="MTAR multi-token prediction: the next-token head predicts the next codebook index, while an auxiliary causal Transformer head predicts a spatially related future token.">
+  <img src="assets/mtarpp_foresight_overview.png" width="960" alt="Complete multi-token foresight supervision diagram: (a) MTAR multi-token prediction of future codebook indices; (b) MTAR++ multi-feature prediction of current and spatially related future features from a frozen generative teacher.">
+  <br><sub>(a) Multi-token prediction in MTAR. (b) Multi-feature prediction in MTAR++. Both retain next-token supervision.</sub>
 </p>
-
-</details>
 
 ### Dual-path semantic dropping
 
 Semantic dropping uses offline patch-level scores to preferentially retain semantically rich patches, reducing redundant computation while preserving original spatial positions. MTAR++ also selects teacher tokens in groups covering all current and future targets. Feature supervision is computed at the intersection of retained student positions and selected teacher-group anchors.
 
 <p align="center">
-  <img src="assets/mtarpp_dual_dropping.png" width="960" alt="Dual-path semantic dropping compresses student and teacher sequences, intersects retained student positions with teacher target-group anchors, and applies MFP only where complete targets are available.">
-  <br><sub>Shorter sequences in both pathways; complete teacher targets at supervised anchors. The diagram uses a toy grid width of 6.</sub>
+  <img src="assets/mtarpp_semantic_dropping_full.png" width="960" alt="Complete semantic dropping diagram: (a) semantic patch scoring and selection; (b) student semantic dropping with original prediction targets; (c) dual-path semantic dropping with teacher target-group selection and shared supervision anchors.">
+  <br><sub>(a) Semantic scoring and patch selection. (b) Student-side SD. (c) Dual-path SD with complete teacher targets at supervised anchors. The diagram uses a toy grid width of 6.</sub>
 </p>
 
 ## Results
