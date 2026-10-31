@@ -6,8 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/2608.25386">Conference Paper</a> ·
-  <a href="docs/TRAINING.md">Usage Guide</a>
+  <a href="https://arxiv.org/abs/2608.25386">Conference Paper</a>
   <br><sub>The paper link refers to the preliminary MTAR work; this repository also implements the MTAR++ extension.</sub>
 </p>
 
