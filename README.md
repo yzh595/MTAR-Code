@@ -28,18 +28,23 @@
 
 ImageNet 256 × 256 class-conditional generation with 300 training epochs. Parameter counts include student-side training auxiliaries for MTAR and MTAR++, excluding the frozen teacher and tokenizer.
 
-| Model | Training parameters | FID ↓ | IS ↑ |
-|:--|--:|--:|--:|
-| LlamaGen-B | 111M | 5.46 | 193.61 |
-| MTAR(B) | 138M | 4.50 | 213.96 |
-| MTAR++(B) | 124M | 4.22 | 230.27 |
-| LlamaGen-L | 343M | 3.80 | 248.28 |
-| MTAR(L) | 387M | 2.85 | 271.41 |
-| MTAR++(L) | 358M | 3.09 | 267.18 |
+<div align="center">
+<table align="center">
+  <thead>
+    <tr><th align="left">Model</th><th align="center">Training parameters</th><th align="center">FID ↓</th><th align="center">IS ↑</th><th align="center">Precision ↑</th><th align="center">Recall ↑</th></tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">LlamaGen-B</td><td align="center">111M</td><td align="center">5.46</td><td align="center">193.61</td><td align="center">0.84</td><td align="center">0.46</td></tr>
+    <tr><td align="left">MTAR(B)</td><td align="center">138M</td><td align="center">4.50</td><td align="center">213.96</td><td align="center">0.84</td><td align="center">0.48</td></tr>
+    <tr><td align="left">MTAR++(B)</td><td align="center">124M</td><td align="center">4.22</td><td align="center">230.27</td><td align="center">0.83</td><td align="center">0.48</td></tr>
+    <tr><td align="left">LlamaGen-L</td><td align="center">343M</td><td align="center">3.80</td><td align="center">248.28</td><td align="center">0.83</td><td align="center">0.52</td></tr>
+    <tr><td align="left">MTAR(L)</td><td align="center">387M</td><td align="center">2.85</td><td align="center">271.41</td><td align="center">0.83</td><td align="center">0.54</td></tr>
+    <tr><td align="left">MTAR++(L)</td><td align="center">358M</td><td align="center">3.09</td><td align="center">267.18</td><td align="center">0.83</td><td align="center">0.53</td></tr>
+  </tbody>
+</table>
+</div>
 
 MTAR achieves up to 1.39× training-time speedup at the same 300-epoch budget. With both models trained for 50 epochs, MTAR++(B) using 300k student images reaches FID 6.53, compared with 7.29 for LlamaGen-B using 1.281M images. The generative teacher is pretrained on the full ImageNet training set.
-
-[Detailed results and ablations →](docs/RESULTS.md)
 
 ## 🛠️ Method
 
