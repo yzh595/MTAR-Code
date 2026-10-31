@@ -64,17 +64,6 @@ Semantic dropping reduces redundant token computation. Its dual-path extension c
 
 ## 📜 Citation
 
-For the extended work:
-
-```bibtex
-@unpublished{yao2026mtarpp,
-  title  = {MTAR++: Multi-Token Foresight Supervision for Efficient Autoregressive Image Generation},
-  author = {Yao, Xiongfei and Niu, Guo and Wang, Teng and Zhu, Nannan},
-  note   = {Manuscript},
-  year   = {2026}
-}
-```
-
 For the preliminary MTAR work:
 
 ```bibtex
