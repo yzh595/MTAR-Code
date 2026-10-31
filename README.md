@@ -44,7 +44,23 @@ ImageNet 256 × 256 class-conditional generation with 300 training epochs. Param
 </table>
 </div>
 
-MTAR achieves up to 1.39× training-time speedup at the same 300-epoch budget. With both models trained for 50 epochs, MTAR++(B) using 300k student images reaches FID 6.53, compared with 7.29 for LlamaGen-B using 1.281M images. The generative teacher is pretrained on the full ImageNet training set.
+### Training efficiency
+
+MTAR achieves up to 1.39× training-time speedup at the same 300-epoch budget. After 50 epochs, MTAR++(B) and MTAR++(L) achieve FIDs of 5.35 and 3.53, respectively, surpassing their corresponding 300-epoch LlamaGen baselines.
+
+<p align="center">
+  <img src="assets/mtarpp_training_budgets.png" width="960" alt="Figure 6: generation quality across training epochs and training-time speedups for base and large models, compared with 300-epoch LlamaGen baselines.">
+  <br><sub>Figure 6. Generation quality and training efficiency across training budgets.</sub>
+</p>
+
+### Data efficiency
+
+With all models trained for 50 epochs, MTAR++(B) using 300k student images reaches FID 6.53, compared with 7.29 for LlamaGen-B using 1.281M images. The generative teacher is pretrained on the full ImageNet training set.
+
+<p align="center">
+  <img src="assets/mtarpp_data_efficiency.png" width="960" alt="Figure 7: FID across student training data scales and absolute FID reductions achieved by MTAR++ base over LlamaGen-B and MTAR base.">
+  <br><sub>Figure 7. Generation quality across student training data scales; all models are trained for 50 epochs.</sub>
+</p>
 
 ## 🛠️ Method
 
@@ -56,11 +72,6 @@ MTP predicts future codebook indices; MFP transfers a frozen generative teacher'
 </p>
 
 Semantic dropping reduces redundant token computation. Its dual-path extension compresses student and teacher sequences while preserving complete teacher targets at shared supervision anchors.
-
-<p align="center">
-  <img src="assets/mtarpp_semantic_dropping_full.png" width="960" alt="Complete semantic dropping diagram: (a) semantic patch scoring and selection; (b) student semantic dropping with original prediction targets; (c) dual-path semantic dropping with teacher target-group selection and shared supervision anchors.">
-  <br><sub>(a) Semantic scoring and selection. (b) SD. (c) Dual-path SD. The illustration uses a toy grid width of 6.</sub>
-</p>
 
 ## 📜 Citation
 
