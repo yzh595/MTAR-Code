@@ -23,6 +23,17 @@
   <br><sub>MTAR++(L) samples on ImageNet 256 × 256.</sub>
 </p>
 
+## 🛠️ Method
+
+MTP predicts future codebook indices; MFP transfers a frozen generative teacher's current- and future-position features. Both retain next-token supervision and incorporate token-level contrastive regularization.
+
+<p align="center">
+  <img src="assets/mtarpp_foresight_overview.png" width="960" alt="Complete multi-token foresight supervision diagram: (a) MTAR multi-token prediction of future codebook indices; (b) MTAR++ multi-feature prediction of current and spatially related future features from a frozen generative teacher.">
+  <br><sub>(a) Multi-token prediction in MTAR. (b) Multi-feature prediction in MTAR++.</sub>
+</p>
+
+Semantic dropping reduces redundant token computation. Its dual-path extension compresses student and teacher sequences while preserving complete teacher targets at shared supervision anchors.
+
 ## 🏆 Main Results
 
 ImageNet 256 × 256 class-conditional generation with 300 training epochs. Parameter counts include student-side training auxiliaries for MTAR and MTAR++, excluding the frozen teacher and tokenizer.
@@ -60,17 +71,6 @@ With all models trained for 50 epochs, MTAR++(B) using 300k student images reach
   <img src="assets/mtarpp_data_efficiency.png" width="960" alt="Figure 7: FID across student training data scales and absolute FID reductions achieved by MTAR++ base over LlamaGen-B and MTAR base.">
   <br><sub>Figure 7. Generation quality across student training data scales; all models are trained for 50 epochs.</sub>
 </p>
-
-## 🛠️ Method
-
-MTP predicts future codebook indices; MFP transfers a frozen generative teacher's current- and future-position features. Both retain next-token supervision and incorporate token-level contrastive regularization.
-
-<p align="center">
-  <img src="assets/mtarpp_foresight_overview.png" width="960" alt="Complete multi-token foresight supervision diagram: (a) MTAR multi-token prediction of future codebook indices; (b) MTAR++ multi-feature prediction of current and spatially related future features from a frozen generative teacher.">
-  <br><sub>(a) Multi-token prediction in MTAR. (b) Multi-feature prediction in MTAR++.</sub>
-</p>
-
-Semantic dropping reduces redundant token computation. Its dual-path extension compresses student and teacher sequences while preserving complete teacher targets at shared supervision anchors.
 
 ## 📜 Citation
 
